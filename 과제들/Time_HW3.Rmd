@@ -1,0 +1,110 @@
+---
+title: "Timeseires_HW3"
+author: "김민국"
+date: '2020-04-24 '
+header-includes:
+  - \usepackage[hangul]{kotex}
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library("forecast")
+```
+
+```{r echo=TRUE, eval=TRUE}
+#### 6번
+
+set.seed(200423)
+
+data_6 <- arima.sim(model = list(ar = c(0.5), ma = c(2)), n = 100)
+fit_6 <- arima(data_6, order = c(1,0,1), include.mean = T)
+fit_6$coef
+pre_6 <- forecast(fit_6, h=10)
+pre_6
+plot(pre_6)
+```
+
+
+```{r echo=TRUE, eval=TRUE}
+#### 7번
+
+set.seed(200423)
+
+###### Error term ~ normal
+
+data_n_7 <- arima.sim(model = list(ar = c(0.7)), n = 100)
+mle_n_7 <- Arima(data_n_7, order = c(1,0,0), method = "ML")
+mle_n_7
+mle_n_7$coef
+mle_n_7$var.coef
+
+lse_n_7 <- Arima(data_n_7, order = c(1,0,0), method = "CSS")
+lse_n_7
+lse_n_7$coef
+lse_n_7$var.coef
+
+###### Error term ~ t(4)
+
+data_t_7 <- arima.sim(model = list(ar = c(0.7)), n = 100, 
+                      rand.gen = function(n,...) rt(n,4))
+mle_t_7 <- Arima(data_t_7, order = c(1,0,0), method = "ML")
+mle_t_7
+mle_t_7$coef
+mle_t_7$var.coef
+
+lse_t_7 <- Arima(data_t_7, order = c(1,0,0), method = "CSS")
+lse_t_7
+lse_t_7$coef
+lse_t_7$var.coef
+
+```
+-> error term이 t분포를 따를 때보다 normal 분포를 따른다고 가정했을 때 추정 값이 True 값에 근접한 결과를 얻을 수 있었습니다.  
+-> 같은 error term의 가정을 했을 때는 mle 추정값이 lse 추정값보다 작은 standard error 값을 조금 더 정확한 추정을 하고 있다고 생각할 수 있습니다.  
+
+```{r echo=TRUE, eval=TRUE}
+#### 8번
+
+set.seed(200423)
+
+data_8 <- arima.sim(model = list(ar = c(-0.2,0.48)), n = 100, 
+                    rand.gen = function(n,...) rt(n,4))
+fit_8 <- arima(data_8, order = c(2,0,0))
+esti <- fit_8$coef
+covar <- solve(fit_8$var.coef)
+margin <- qchisq(0.95,2)
+
+##### CI = tr((true - esti))%*%covar%*%(true-esti)<=margin
+
+```
+-> 추정값이 자유도가 2인 카이제곱 분포를 따르므로 이에 맞게 신뢰영역을 구해주어야 합니다.  
+-> 카이제곱 분포의 신뢰영역 공식에 맞게 참값을 true, 추정값을 esti, 추정값의 분산행렬의 역행렬을 covar, 자유도가 2인 카이제곱분포에서 95%의 확률을 갖는 값을 margin이라는 변수로 설정했습니다.  
+-> 그러면 우리가 원하는 신뢰영역은 {true : tr((true - esit)) %*% covar %*%(true - eist) <= margin} 으로 얻을 수 있습니다.  
+
+```{r echo=TRUE, eval=TRUE}
+#### 10번
+
+set.seed(200423)
+
+data_10 <- arima.sim(model = list(ar=c(0.7), ma=c(-0.2)), n = 300)
+acf_10 <- acf(data_10)
+
+head(acf_10$acf)
+plot(acf_10)
+
+```
+-> 300개의 자료를 생성하여 acf 값을 구했습니다.  
+
+```{r echo=TRUE, eval=TRUE}
+#### 12번
+
+set.seed(200423)
+
+data_12 <- arima.sim(model = list(ma=c(0.5)), n = 300)
+fit_12 <- Arima(data_12, order = c(0,0,1))
+fit_12
+
+pre12 <- forecast(fit_12, h = 30)
+pre12
+
+```

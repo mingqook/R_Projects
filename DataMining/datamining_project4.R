@@ -1,0 +1,359 @@
+library("glmnet")
+library("MASS")
+library("leaps")
+library("AUC")
+library("caret")
+library("plyr")
+library("e1071")
+library("ROCR")
+library("randomForest")
+library("class")
+library("pROC")
+
+
+# feto_data <- read.table("feto_data", header = T)
+# 
+# feto_data$tumor_stage.diagnoses <- revalue(feto_data$tumor_stage.diagnoses, replace = c("stage i" = "a" ,"stage ii" = "b", "stage iii" = "c", "stage iiia" = "d", "stage iiib" = "e", "stage iiic" = "f", "stage iv" = "g", "stage iva" = "h", "stage ivb" = "i"))
+# 
+# feto_data$stage <- rep(1, nrow(feto_data))
+# for(i in 1:nrow(feto_data)) {
+#   if (feto_data[i,]$tumor_stage.diagnoses == "a"){
+#     feto_data[i,]$stage <- "a"
+#   }
+#   else if (feto_data[i,]$tumor_stage.diagnoses == "b") {
+#     feto_data[i,]$stage <- "b"
+#   }
+#   else{
+#     feto_data[i,]$stage <- "c"
+#   }
+# }
+# feto_data$stage <- factor(feto_data$stage)
+# feto_data <- feto_data[-34]
+# 
+# pre <- preProcess(feto_data, method = c("center", "scale"))
+# data_Transformed <- predict(pre, feto_data)
+# set.seed(1)
+# trainIndex <- createDataPartition(data_Transformed$stage, p = 2/3, list = FALSE, times = 1)
+# data_train <- data_Transformed[trainIndex,]
+# data_test <- data_Transformed[-trainIndex,]
+# 
+# nrow(data_train)
+# nrow(data_test)
+# 
+# ###################### Naive Bayes #################
+# 
+# RF_model <- randomForest(stage ~ ., data = data_train)
+# RF_predict <- predict(RF_model, data_test)
+# data_train1 <- cbind(data_train[,order(-importance(RF_model))],data_train$stage)
+# colnames(data_train1)[34] <- "stage"
+# 
+# ##### 5-fold cv로 변수개수 정하기
+# h <- list()
+# for(n in 1 : 5) {
+#   c <- cut(seq(1:nrow(data_train1)), breaks = 5, labels = F)
+#   data_train1_train <- data_train1[c != n,]
+#   data_train1_vali <- data_train1[c == n,]
+#   m <- list() ## 변수명
+#   j <- c() ## max accuracy 저장
+#   k <- 2
+#   repeat {
+#     j[1] <- 0
+#     if (k == 2) {
+#       q <- c() ## max accuracy를 구하기 위해 모든 accuracy 저장
+#       w <- c() ## accuracy의 index저장
+#       for(i in 1 : ncol(combn(ncol(data_train1_train)-1,2))){
+#         x <- combn(ncol(data_train1_train)-1,2)
+#         x1 <- x[,i]
+#         NB <- naiveBayes(data_train1_train[,x1], data_train1_train$stage)
+#         NB_p <- predict(NB, data_train1_vali)
+#         y <- confusionMatrix(NB_p, data = data_train1_vali$stage)
+#         q[i] <- y$overall[1]
+#         w <- which(q == max(q))
+#       }
+#       j[k] <- max(q)
+#       x <- combn(ncol(data_train1_train)-1,2)
+#       x2 <- x[,w[1]]
+#       m[[k-1]] <- colnames(data_train1_train[x2])
+#       data_train2 <- data_train1_train[,-x2]
+#       if(j[k] < j[k-1]) break
+#       k = k + 1
+#     }
+#     else {
+#       q <- c()
+#       w <- c()
+#       for(i in 1 : ncol(combn(ncol(data_train2)-1,1))){
+#         x <- combn(ncol(data_train2)-1,1)
+#         x1 <- x[,i]
+#         x3 <- unlist(m)
+#         x1 <- c(colnames(data_train2)[x1],x3)
+#         NB <- naiveBayes(data_train1_train[,x1], data_train1_train$stage)
+#         NB_p <- predict(NB, data_train1_vali)
+#         y <- confusionMatrix(NB_p, data = data_train1_vali$stage)
+#         q[i] <- y$overall[1]
+#         w <- which(q == max(q))
+#       }
+#       j[k] <- max(q)
+#       x <- combn(ncol(data_train2)-1,1)
+#       x2 <- x[,w[1]]
+#       m[[k-1]] <- colnames(data_train2[x2])
+#       data_train2 <- data_train2[,-x2]
+#       if(j[k] < j[k-1]) break
+#       k = k + 1
+#     }
+#   }
+#   h[[n]] <- j
+# }
+# 
+# h ## 변수 9개 썼을 때 최대라고 생각할 수 있다.
+# 
+# 
+# 
+# 
+# #### 9개의 변수 선택 #######
+# 
+# q <- c()
+# m <- list() ## 변수명
+# j <- c() ## max accuracy 저장
+# w <- c()
+# k <- 2
+# repeat {
+#   j[1] <- 0
+#   if (k == 2) {
+#     q <- c() ## max accuracy를 구하기 위해 모든 accuracy 저장
+#     w <- c() ## accuracy의 index저장
+#     for(i in 1 : ncol(combn(ncol(data_train1)-1,2))){
+#       x <- combn(ncol(data_train1)-1,2)
+#       x1 <- x[,i]
+#       NB <- naiveBayes(data_train1[,x1], data_train1$stage)
+#       NB_p <- predict(NB, data_test)
+#       y <- confusionMatrix(NB_p, data = data_test$stage)
+#       q[i] <- y$overall[1]
+#       w <- which(q == max(q))
+#     }
+#     j[k] <- max(q)
+#     x <- combn(ncol(data_train1)-1,2)
+#     x2 <- x[,w[1]]
+#     m[[k-1]] <- colnames(data_train1[x2])
+#     data_train2 <- data_train1[,-x2]
+#     if(j[k] < j[k-1]) break
+#     k = k + 1
+#   }
+#   else {
+#     q <- c()
+#     w <- c()
+#     for(i in 1 : ncol(combn(ncol(data_train2)-1,1))){
+#       x <- combn(ncol(data_train2)-1,1)
+#       x1 <- x[,i]
+#       x3 <- unlist(m)
+#       x1 <- c(colnames(data_train2)[x1],x3)
+#       NB <- naiveBayes(data_train1[,x1], data_train1$stage)
+#       NB_p <- predict(NB, data_test)
+#       y <- confusionMatrix(NB_p, data = data_test$stage)
+#       q[i] <- y$overall[1]
+#       w <- which(q == max(q))
+#     }
+#     j[k] <- max(q)
+#     x <- combn(ncol(data_train2)-1,1)
+#     x2 <- x[,w[1]]
+#     m[[k-1]] <- colnames(data_train2[x2])
+#     data_train2 <- data_train2[,-x2]
+#     if(k > 9) break
+#     k = k + 1
+#   }
+# }
+# m1 <- unlist(m)
+# m1
+# 
+# ##### 선택된 변수들로 nb ####
+# 
+# # NB <- naiveBayes(data_train, data_train$stage)
+# # NB_p <- predict(NB, data_test)
+# # c <- confusionMatrix(NB_p, data = data_test$stage)
+# 
+# NB1 <- naiveBayes(data_train1[,m1], data_train1$stage)
+# NB_p1 <- predict(NB1, data_test)
+# NB1_C <- confusionMatrix(NB_p1, data = data_test$stage)
+# NB1_C$overall[1]
+# 
+# NB1_R <- multiclass.roc(as.numeric(data_test$stage), as.numeric(NB_p1))
+# auc(NB1_R)
+# auc(NB1_R1[[7]])
+# NB1_R1 <- NB1_R[['rocs']]
+# plot.roc(NB1_R1[[1]])
+# sapply(2:length(NB1_R1),function(i) lines.roc(NB1_R1[[i]],col=i))
+
+
+
+
+
+
+####################### formula 사용
+
+feto_data <- read.table("feto_data", header = T)
+
+feto_data$tumor_stage.diagnoses <- revalue(feto_data$tumor_stage.diagnoses, replace = c("stage i" = "a" ,"stage ii" = "b", "stage iii" = "c", "stage iiia" = "d", "stage iiib" = "e", "stage iiic" = "f", "stage iv" = "g", "stage iva" = "h", "stage ivb" = "i"))
+
+feto_data$stage <- rep(1, nrow(feto_data))
+for(i in 1:nrow(feto_data)) {
+  if (feto_data[i,]$tumor_stage.diagnoses == "a"){
+    feto_data[i,]$stage <- "a"
+  }
+  else if (feto_data[i,]$tumor_stage.diagnoses == "b") {
+    feto_data[i,]$stage <- "b"
+  }
+  else{
+    feto_data[i,]$stage <- "c"
+  }
+}
+feto_data$stage <- factor(feto_data$stage)
+feto_data <- feto_data[-34]
+
+pre <- preProcess(feto_data, method = c("center", "scale"))
+data_Transformed <- predict(pre, feto_data)
+set.seed(1)
+trainIndex <- createDataPartition(data_Transformed$stage, p = 2/3, list = FALSE, times = 1)
+data_train <- data_Transformed[trainIndex,]
+data_test <- data_Transformed[-trainIndex,]
+
+nrow(data_train)
+nrow(data_test)
+
+###################### Naive Bayes #################
+
+RF_model <- randomForest(stage ~ ., data = data_train)
+RF_predict <- predict(RF_model, data_test)
+data_train1 <- cbind(data_train[,order(-importance(RF_model))],data_train$stage)
+colnames(data_train1)[34] <- "stage"
+
+##### 5-fold cv로 변수개수 정하기
+h <- list()
+for(n in 1 : 5) {
+  c <- cut(seq(1:nrow(data_train1)), breaks = 5, labels = F)
+  data_train1_train <- data_train1[c != n,]
+  data_train1_vali <- data_train1[c == n,]
+  m <- list() ## 변수명
+  j <- c() ## max accuracy 저장
+  k <- 2
+  repeat {
+    j[1] <- 0
+    if (k == 2) {
+      q <- c() ## max accuracy를 구하기 위해 모든 accuracy 저장
+      w <- c() ## accuracy의 index저장
+      for(i in 1 : ncol(combn(ncol(data_train1_train)-1,2))){
+        x <- combn(ncol(data_train1_train)-1,2)
+        x1 <- x[,i]
+        NB <- naiveBayes(data_train1_train$stage~., data = data_train1_train[,x1])
+        NB_p <- predict(NB, data_train1_vali)
+        y <- confusionMatrix(NB_p, data = data_train1_vali$stage)
+        q[i] <- y$overall[1]
+        w <- which(q == max(q))
+      }
+      j[k] <- max(q)
+      x <- combn(ncol(data_train1_train)-1,2)
+      x2 <- x[,w[1]]
+      m[[k-1]] <- colnames(data_train1_train[x2])
+      data_train2 <- data_train1_train[,-x2]
+      if(j[k] < j[k-1]) break
+      k = k + 1
+    }
+    else {
+      q <- c()
+      w <- c()
+      for(i in 1 : ncol(combn(ncol(data_train2)-1,1))){
+        x <- combn(ncol(data_train2)-1,1)
+        x1 <- x[,i]
+        x3 <- unlist(m)
+        x1 <- c(colnames(data_train2)[x1],x3)
+        NB <- naiveBayes(data_train1_train$stage~., data= data_train1_train[,x1])
+        NB_p <- predict(NB, data_train1_vali)
+        y <- confusionMatrix(NB_p, data = data_train1_vali$stage)
+        q[i] <- y$overall[1]
+        w <- which(q == max(q))
+      }
+      j[k] <- max(q)
+      x <- combn(ncol(data_train2)-1,1)
+      x2 <- x[,w[1]]
+      m[[k-1]] <- colnames(data_train2[x2])
+      data_train2 <- data_train2[,-x2]
+      if(j[k] < j[k-1]) break
+      k = k + 1
+    }
+  }
+  h[[n]] <- j
+}
+
+h ## 변수 9개 썼을 때 최대라고 생각할 수 있다.
+
+
+#### 9개의 변수 선택 #######
+
+q <- c()
+m <- list() ## 변수명
+j <- c() ## max accuracy 저장
+w <- c()
+k <- 2
+repeat {
+  j[1] <- 0
+  if (k == 2) {
+    q <- c() ## max accuracy를 구하기 위해 모든 accuracy 저장
+    w <- c() ## accuracy의 index저장
+    for(i in 1 : ncol(combn(ncol(data_train1)-1,2))){
+      x <- combn(ncol(data_train1)-1,2)
+      x1 <- x[,i]
+      NB <- naiveBayes(data_train1$stage~., data = data_train1[,x1])
+      NB_p <- predict(NB, data_test)
+      y <- confusionMatrix(NB_p, data = data_test$stage)
+      q[i] <- y$overall[1]
+      w <- which(q == max(q))
+    }
+    j[k] <- max(q)
+    x <- combn(ncol(data_train1)-1,2)
+    x2 <- x[,w[1]]
+    m[[k-1]] <- colnames(data_train1[x2])
+    data_train2 <- data_train1[,-x2]
+    if(j[k] < j[k-1]) break
+    k = k + 1
+  }
+  else {
+    q <- c()
+    w <- c()
+    for(i in 1 : ncol(combn(ncol(data_train2)-1,1))){
+      x <- combn(ncol(data_train2)-1,1)
+      x1 <- x[,i]
+      x3 <- unlist(m)
+      x1 <- c(colnames(data_train2)[x1],x3)
+      NB <- naiveBayes(data_train1$stage~., data = data_train1[,x1])
+      NB_p <- predict(NB, data_test)
+      y <- confusionMatrix(NB_p, data = data_test$stage)
+      q[i] <- y$overall[1]
+      w <- which(q == max(q))
+    }
+    j[k] <- max(q)
+    x <- combn(ncol(data_train2)-1,1)
+    x2 <- x[,w[1]]
+    m[[k-1]] <- colnames(data_train2[x2])
+    data_train2 <- data_train2[,-x2]
+    if(k > 10) break
+    k = k + 1
+  }
+}
+m1 <- unlist(m)
+m1 <- m1[1:9]
+m1
+
+##### 선택된 변수들로 nb ####
+
+# NB <- naiveBayes(data_train, data_train$stage)
+# NB_p <- predict(NB, data_test)
+# c <- confusionMatrix(NB_p, data = data_test$stage)
+
+NB1 <- naiveBayes(data_train1$stage~., data = data_train1[,m1])
+NB_p1 <- predict(NB1, data_test)
+NB1_C <- confusionMatrix(NB_p1, data = data_test$stage)
+NB1_C
+
+NB1_R <- multiclass.roc(as.numeric(data_test$stage), as.numeric(NB_p1))
+auc(NB1_R)
+NB1_R1 <- NB1_R[['rocs']]
+plot.roc(NB1_R1[[1]])
+sapply(2:length(NB1_R1),function(i) lines.roc(NB1_R1[[i]],col=i))

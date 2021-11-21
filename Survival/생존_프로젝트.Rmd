@@ -1,0 +1,1256 @@
+---
+title: "Untitled"
+author: "김민국"
+date: '2019 11 29 '
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r echo=T, eval=TRUE}
+library(survival)
+library(KMsurv)
+library(dplyr)
+library(ggfortify)
+library(parmsurvfit)  ## para 방법으로 추정 해주는 패키지 , weibull, log-normal, exp, logistic 가능
+
+
+data <- read.csv("mlb.csv")
+head(data)
+
+
+##### 홈런 별 데이터 요약, 좌/우 별 구분
+head(addmargins(with(data, table(B.group, X5thC)), FUN = list(Total = sum), quiet = T))
+head(addmargins(with(data, table(B.group, X10thC)), FUN = list(Total = sum), quiet = T))
+head(addmargins(with(data, table(B.group, X20thC)), FUN = list(Total = sum), quiet = T))
+head(addmargins(with(data, table(B.group, X30thC)), FUN = list(Total = sum), quiet = T))
+
+##### Left and 5th
+
+data_L5 <- data %>% select(B.group,X5thHR,X5thC) %>% filter(B.group == 1)
+surv_data_L5 <- Surv(time = data_L5$X5thHR, event = data_L5$X5thC)
+
+surv_L5 <- Surv(time = data_L5$X5thHR, event = data_L5$X5thC )
+surv_L5_fit <- survfit(formula = surv_L5 ~ 1, data = surv_L5, conf.type = "plain")
+plot(surv_L5_fit, col = "black", xlab = "Time", ylab = "Survival function", main = "K-M, Exp, Weibull estimate of survival function(5th HR, Left handed)")
+
+lamda_L5_exp <- sum(data_L5$X5thC)/sum(data_L5$X5thHR)
+curve(exp(-lamda_L5_exp*x), from = 0, to = max(data_L5$X5thHR) + 1, col = "blue", add = T) ## exp로 했을 때 그림
+
+
+
+# data_L5_exp <- fit_data(data = data_L5, dist = "exp", time = "X5thHR", censor = "X5thC")
+# lamda_L5_exp_1 <- data_L5_exp$estimate
+#  ## 직접 계산 한 것과 결과 거의 동일
+# curve(exp(-lamda_L5_exp_1*x), from = 0, to = max(data_L5$X5thHR) + 1, col = "red", xlab = "Time", ylab = "Survival function", main = "L5_1 Using exponetial ditribution")
+
+data_L5_wei <- fit_data(data = data_L5, dist = "weibull", time = "X5thHR", censor = "X5thC" )
+alpha_L5_wei <- data_L5_wei$estimate[1] ## alpha = shpae parameter
+lamda_L5_wei <-  sum(data_L5$X5thC)/sum((data_L5$X5thHR)^alpha_L5_wei) ## 위에서 구한 alpha를 이용해서 우리의 일반식을 사용한다.
+curve(exp(-lamda_L5_wei*(x^alpha_L5_wei)), from = 0, to = max(data_L5$X5thHR) + 1, col = "red", add = T) ## weilbull로 했을 때 그림
+
+legend("bottomleft", legend=c("K-M","Exp","Weibull") ,lty = rep(1,3),col=c("black","blue","red"))
+
+# age <- factor(data$A.group, labels = c("young","normal","old"))
+# hand <- factor(data$B.group, labels = c("R","L","B"))
+# tall <- factor(data1$H.group, labels = c("short","normal","tall"))
+# heavy <- factor(data1$W.group, labels = c("light","normal","heavy"))
+# league <- factor(data1$League, labels = c("NL","AL"))
+ 
+# data_L5_1 <- data %>%  filter(B.group == 1)
+# s_L5 <- Surv(time =  data_L5_1$X5thHR, event = data_L5_1$X5thC)
+# s_L5_1 <- survreg(s_L5 ~ factor(A.group) + factor(H.group) + factor(W.group) + factor(League), dist = "weibull", data = data_L5_1)
+# summary(s_L5_1)
+# 
+# ss_L5 <- Surv(time = data$X5thHR, event = data$X5thC)
+# ss_L5_1 <- survreg(ss_L5 ~ factor(B.group), dist = "weibull", data = data)
+# summary(ss_L5_1) ## 전체 공통으로 들어감
+# 
+# s_L5_fit <- survfit(s_L5 ~ 1)
+# s_L5_fit_sum <- summary(s_L5_fit)
+# KM_surv_L5 <- s_L5_fit_sum$surv
+# log_time_L5 <- log(s_L5_fit_sum$time)
+# plot(log_time_L5, log(-log(KM_surv_L5)), type = "l", lty = 1)
+# abline(coef(lm(log(-log(KM_surv_L5))~log_time_L5)),col = "blue")
+
+
+##### Right and 5th
+
+data_R5 <- data %>% select(B.group,X5thHR,X5thC) %>% filter(B.group == 0)
+surv_data_R5 <- Surv(time = data_R5$X5thHR, event = data_R5$X5thC)
+
+surv_R5 <- Surv(time = data_R5$X5thHR, event = data_R5$X5thC )
+surv_R5_fit <- survfit(formula = surv_R5 ~ 1, data = surv_R5, conf.type = "plain")
+plot(surv_R5_fit, col = "black", xlab = "Time", ylab = "Survival function", main = "K-M, Exp, Weibull estimate of survival function(5th HR, Right handed)")
+
+lamda_R5_exp <- sum(data_R5$X5thC)/sum(data_R5$X5thHR)
+curve(exp(-lamda_R5_exp*x), from = 0, to = max(data_R5$X5thHR) + 1, col = "blue", add = T) ## exp로 했을 때 그림
+
+data_R5_wei <- fit_data(data = data_R5, dist = "weibull", time = "X5thHR", censor = "X5thC" )
+alpha_R5_wei <- data_R5_wei$estimate[1] 
+lamda_R5_wei <-  sum(data_R5$X5thC)/sum((data_R5$X5thHR)^alpha_R5_wei)
+curve(exp(-lamda_R5_wei*(x^alpha_R5_wei)), from = 0, to = max(data_R5$X5thHR) + 1, col = "red",add = T) ## weilbull로 했을 때 그림
+
+legend("bottomleft", legend=c("K-M","Exp","Weibull") ,lty = rep(1,3),col=c("black","blue","red"))
+
+
+# data_R5_1 <- data %>%  filter(B.group == 0)
+# s_R5 <- Surv(time =  data_R5_1$X5thHR, event = data_R5_1$X5thC)
+# s_R5_1 <- survreg(s_R5 ~ factor(A.group) + factor(H.group) + factor(W.group) + factor(League), dist = "weibull", data = data_R5_1)
+# summary(s_R5_1)
+# 
+# ss_R5 <- Surv(time = data$X5thHR, event = data$X5thC)
+# ss_R5_1 <- survreg(ss_R5 ~ factor(B.group), dist = "weibull", data = data)
+# summary(ss_R5_1)
+# 
+# s_R5_fit <- survfit(s_R5 ~ 1)
+# s_R5_fit_sum <- summary(s_R5_fit)
+# KM_surv_R5 <- s_R5_fit_sum$surv
+# log_time_R5 <- log(s_R5_fit_sum$time)
+# plot(log_time_R5, log(-log(KM_surv_R5)), type = "l", lty = 1)
+# abline(coef(lm(log(-log(KM_surv_R5))~log_time_R5)),col = "blue") ## ERROR ??
+
+
+##### Both and 5th
+
+data_B5 <- data %>% select(B.group,X5thHR,X5thC) %>% filter(B.group == 2)
+surv_data_B5 <- Surv(time = data_B5$X5thHR, event = data_B5$X5thC)
+
+surv_B5 <- Surv(time = data_B5$X5thHR, event = data_B5$X5thC )
+surv_B5_fit <- survfit(formula = surv_B5 ~ 1, data = surv_B5, conf.type = "plain")
+plot(surv_B5_fit, col = "black", xlab = "Time", ylab = "Survival function", main = "K-M, Exp, Weibull estimate of survival function(5th HR, Both handed)")
+
+lamda_B5_exp <- sum(data_B5$X5thC)/sum(data_B5$X5thHR)
+curve(exp(-lamda_B5_exp*x), from = 0, to = max(data_B5$X5thHR) + 1, col = "blue",add = T) ## exp로 했을 때 그림
+
+data_B5_wei <- fit_data(data = data_B5, dist = "weibull", time = "X5thHR", censor = "X5thC" )
+alpha_B5_wei <- data_B5_wei$estimate[1] 
+lamda_B5_wei <-  sum(data_B5$X5thC)/sum((data_B5$X5thHR)^alpha_B5_wei)
+curve(exp(-lamda_B5_wei*(x^alpha_B5_wei)), from = 0, to = max(data_B5$X5thHR) + 1, col = "red", add = T) ## weilbull로 했을 때 그림
+
+legend("bottomleft", legend=c("K-M","Exp","Weibull") ,lty = rep(1,3),col=c("black","blue","red"))
+
+# data_B5_1 <- data %>%  filter(B.group == 2)
+# s_B5 <- Surv(time =  data_B5_1$X5thHR, event = data_B5_1$X5thC)
+# s_B5_1 <- survreg(s_B5 ~ factor(A.group) + factor(H.group) + factor(W.group) + factor(League), dist = "weibull", data = data_B5_1)
+# summary(s_B5_1)
+# 
+# ss_B5 <- Surv(time = data$X5thHR, event = data$X5thC)
+# ss_B5_1 <- survreg(ss_B5 ~ factor(B.group), dist = "weibull", data = data)
+# summary(ss_B5_1)
+# 
+# s_B5_fit <- survfit(s_B5 ~ 1)
+# s_B5_fit_sum <- summary(s_B5_fit)
+# KM_surv_B5 <- s_B5_fit_sum$surv
+# log_time_B5 <- log(s_B5_fit_sum$time)
+# plot(log_time_B5, log(-log(KM_surv_B5)), type = "l", lty = 1)
+# abline(coef(lm(log(-log(KM_surv_B5))~log_time_B5)),col = "blue")
+
+
+##### Left and 10th
+
+data_L10 <- data %>% select(B.group,X10thHR,X10thC) %>% filter(B.group == 1)
+surv_data_L10 <- Surv(time = data_L10$X10thHR, event = data_L10$X10thC)
+
+surv_L10 <- Surv(time = data_L10$X10thHR, event = data_L10$X10thC )
+surv_L10_fit <- survfit(formula = surv_L10 ~ 1, data = surv_L10, conf.type = "plain")
+plot(surv_L10_fit, col = "black", xlab = "Time", ylab = "Survival function", main = "K-M, Exp, Weibull estimate of survival function(10th HR, Left handed)")
+
+lamda_L10_exp <- sum(data_L10$X10thC)/sum(data_L10$X10thHR)
+curve(exp(-lamda_L10_exp*x), from = 0, to = max(data_L10$X10thHR) + 1, col = "blue", add = T) ## exp로 했을 때 그림
+
+data_L10_wei <- fit_data(data = data_L10, dist = "weibull", time = "X10thHR", censor = "X10thC" )
+alpha_L10_wei <- data_L10_wei$estimate[1] 
+lamda_L10_wei <-  sum(data_L10$X10thC)/sum((data_L10$X10thHR)^alpha_L10_wei)
+curve(exp(-lamda_L10_wei*(x^alpha_L10_wei)), from = 0, to = max(data_L10$X10thHR) + 1, col = "red", add = T) ## weilbull로 했을 때 그림
+
+legend("bottomleft", legend=c("K-M","Exp","Weibull") ,lty = rep(1,3),col=c("black","blue","red"))
+
+# data_L10_1 <- data %>%  filter(B.group == 1)
+# s_L10 <- Surv(time =  data_L10_1$X10thHR, event = data_L10_1$X10thC)
+# s_L10_1 <- survreg(s_L10 ~ factor(A.group) + factor(H.group) + factor(W.group) + factor(League), dist = "weibull", data = data_L10_1)
+# summary(s_L10_1)
+# 
+# ss_L10 <- Surv(time = data$X10thHR, event = data$X10thC)
+# ss_L10_1 <- survreg(ss_L10 ~ facto(B.group), dist = "weibull", data = data)
+# summary(ss_L10_1)
+# 
+# s_L10_fit <- survfit(s_L10 ~ 1)
+# s_L10_fit_sum <- summary(s_L10_fit)
+# KM_surv_L10 <- s_L10_fit_sum$surv
+# log_time_L10 <- log(s_L10_fit_sum$time)
+# plot(log_time_L10, log(-log(KM_surv_L10)), type = "l", lty = 1)
+# abline(coef(lm(log(-log(KM_surv_L10))~log_time_L10)),col = "blue") ## ERROR ??
+
+
+##### Right and 10th
+
+data_R10 <- data %>% select(B.group,X10thHR,X10thC) %>% filter(B.group == 0)
+surv_data_R10 <- Surv(time = data_R10$X10thHR, event = data_R10$X10thC)
+
+surv_R10 <- Surv(time = data_R10$X10thHR, event = data_R10$X10thC )
+surv_R10_fit <- survfit(formula = surv_R10 ~ 1, data = surv_R10, conf.type = "plain")
+plot(surv_R10_fit, col = "black", xlab = "Time", ylab = "Survival function", main = "K-M, Exp, Weibull estimate of survival function(10th HR, Right handed)")
+
+lamda_R10_exp <- sum(data_R10$X10thC)/sum(data_R10$X10thHR)
+curve(exp(-lamda_R10_exp*x), from = 0, to = max(data_R10$X10thHR) + 1, col = "blue", add = T) ## exp로 했을 때 그림
+
+data_R10_wei <- fit_data(data = data_R10, dist = "weibull", time = "X10thHR", censor = "X10thC" )
+alpha_R10_wei <- data_R10_wei$estimate[1] 
+lamda_R10_wei <-  sum(data_R10$X10thC)/sum((data_R10$X10thHR)^alpha_R10_wei)
+curve(exp(-lamda_R10_wei*(x^alpha_R10_wei)), from = 0, to = max(data_R10$X10thHR) + 1, col = "red", add = T) ## weilbull로 했을 때 그림
+
+legend("bottomleft", legend=c("K-M","Exp","Weibull") ,lty = rep(1,3),col=c("black","blue","red"))
+
+# data_R10_1 <- data %>%  filter(B.group == 0)
+# s_R10 <- Surv(time =  data_R10_1$X10thHR, event = data_R10_1$X10thC)
+# s_R10_1 <- survreg(s_R10 ~ factor(A.group) + factor(H.group) + factor(W.group) + factor(League), dist = "weibull", data = data_R10_1)
+# summary(s_R10_1)
+# 
+# ss_R10 <- Surv(time = data$X10thHR, event = data$X10thC)
+# ss_R10_1 <- survreg(ss_R10 ~ factro(B.group), dist = "weibull", data = data)
+# summary(ss_R10_1)
+# 
+# s_R10_fit <- survfit(s_R10 ~ 1)
+# s_R10_fit_sum <- summary(s_R10_fit)
+# KM_surv_R10 <- s_R10_fit_sum$surv
+# log_time_R10 <- log(s_R10_fit_sum$time)
+# plot(log_time_R10, log(-log(KM_surv_R10)), type = "l", lty = 1)
+# abline(coef(lm(log(-log(KM_surv_R10))~log_time_R10)),col = "blue")
+
+
+##### Both and 10th
+data_B10 <- data %>% select(B.group,X10thHR,X10thC) %>% filter(B.group == 2)
+surv_data_B10 <- Surv(time = data_B10$X10thHR, event = data_B10$X10thC)
+
+surv_B10 <- Surv(time = data_B10$X10thHR, event = data_B10$X10thC )
+surv_B10_fit <- survfit(formula = surv_B10 ~ 1, data = surv_B10, conf.type = "plain")
+plot(surv_B10_fit, col = "black", xlab = "Time", ylab = "Survival function", main = "K-M, Exp, Weibull estimate of survival function(10th HR, Both handed)")
+
+lamda_B10_exp <- sum(data_B10$X10thC)/sum(data_B10$X10thHR)
+curve(exp(-lamda_B10_exp*x), from = 0, to = max(data_B10$X10thHR) + 1, col = "blue", add = T) ## exp로 했을 때 그림
+
+data_B10_wei <- fit_data(data = data_B10, dist = "weibull", time = "X10thHR", censor = "X10thC" )
+alpha_B10_wei <- data_B10_wei$estimate[1] 
+lamda_B10_wei <-  sum(data_B10$X10thC)/sum((data_B10$X10thHR)^alpha_B10_wei)
+curve(exp(-lamda_B10_wei*(x^alpha_B10_wei)), from = 0, to = max(data_B10$X10thHR) + 1, col = "red", add = T) ## weilbull로 했을 때 그림
+
+legend("bottomleft", legend=c("K-M","Exp","Weibull") ,lty = rep(1,3),col=c("black","blue","red"))
+
+# data_B10_1 <- data %>%  filter(B.group == 2)
+# s_B10 <- Surv(time =  data_B10_1$X10thHR, event = data_B10_1$X10thC)
+# s_B10_1 <- survreg(s_B10 ~ factor(A.group) + factor(H.group) + factor(W.group) + factor(League), dist = "weibull", data = data_B10_1)
+# summary(s_B10_1)  ## warning ??
+# 
+# ss_B10 <- Surv(time = data$X10thHR, event = data$X10thC)
+# ss_B10_1 <- survreg(ss_B10 ~ factor(B.group), dist = "weibull", data = data)
+# summary(ss_B10_1)
+# 
+# s_B10_fit <- survfit(s_B10 ~ 1)
+# s_B10_fit_sum <- summary(s_B10_fit)
+# KM_surv_B10 <- s_B10_fit_sum$surv
+# log_time_B10 <- log(s_B10_fit_sum$time)
+# plot(log_time_B10, log(-log(KM_surv_B10)), type = "l", lty = 1)
+# abline(coef(lm(log(-log(KM_surv_B10))~log_time_B10)),col = "blue")
+
+
+##### Left and 20th
+
+data_L20 <- data %>% select(B.group,X20thHR,X20thC) %>% filter(B.group == 1)
+surv_data_L20 <- Surv(time = data_L20$X20thHR, event = data_L20$X20thC)
+
+surv_L20 <- Surv(time = data_L20$X20thHR, event = data_L20$X20thC )
+surv_L20_fit <- survfit(formula = surv_L20 ~ 1, data = surv_L20, conf.type = "plain")
+plot(surv_L20_fit, col = "black", xlab = "Time", ylab = "Survival function", main = "K-M, Exp, Weibull estimate of survival function(20th HR, Left handed)")
+
+lamda_L20_exp <- sum(data_L20$X20thC)/sum(data_L20$X20thHR)
+curve(exp(-lamda_L20_exp*x), from = 0, to = max(data_L20$X20thHR) + 1, col = "blue", add = T) ## exp로 했을 때 그림
+
+data_L20_wei <- fit_data(data = data_L20, dist = "weibull", time = "X20thHR", censor = "X20thC" )
+alpha_L20_wei <- data_L20_wei$estimate[1] 
+lamda_L20_wei <-  sum(data_L20$X20thC)/sum((data_L20$X20thHR)^alpha_L20_wei)
+curve(exp(-lamda_L20_wei*(x^alpha_L20_wei)), from = 0, to = max(data_L20$X20thHR) + 1, col = "red", add = T) ## weilbull로 했을 때 그림
+
+legend("bottomleft", legend=c("K-M","Exp","Weibull") ,lty = rep(1,3),col=c("black","blue","red"))
+
+#
+# # K-M그림으로 확인
+# surv_x_1 <- Surv(time = data_L20$X20thHR, event = data_L20$X20thC )
+# surv_x_1_fit <- survfit(formula = surv_x_1 ~ 1, data = surv_x_1, conf.type = "plain")
+# plot(surv_x_1_fit)
+
+
+# data_L20_1 <- data %>%  filter(B.group == 1)
+# s_L20 <- Surv(time =  data_L20_1$X20thHR, event = data_L20_1$X20thC)
+# s_L20_1 <- survreg(s_L20 ~ factor(A.group) + factor(H.group) + factor(W.group) + factor(League), dist = "weibull", data = data_L20_1)
+# summary(s_L20_1)  ## warning ??
+# 
+# ss_L20 <- Surv(time = data$X20thHR, event = data$X20thC)
+# ss_L20_1 <- survreg(ss_L20 ~ factor(B.group), dist = "weibull", data = data)
+# summary(ss_L20_1)
+# 
+# s_L20_fit <- survfit(s_L20 ~ 1)
+# s_L20_fit_sum <- summary(s_L20_fit)
+# KM_surv_L20 <- s_L20_fit_sum$surv
+# log_time_L20 <- log(s_L20_fit_sum$time)
+# plot(log_time_L20, log(-log(KM_surv_L20)), type = "l", lty = 1)
+# abline(coef(lm(log(-log(KM_surv_L20))~log_time_L20)),col = "blue")
+
+
+##### Right and 20th
+
+data_R20 <- data %>% select(B.group,X20thHR,X20thC) %>% filter(B.group == 0)
+surv_data_R20 <- Surv(time = data_R20$X20thHR, event = data_R20$X20thC)
+
+surv_R20 <- Surv(time = data_R20$X20thHR, event = data_R20$X20thC )
+surv_R20_fit <- survfit(formula = surv_R20 ~ 1, data = surv_R20, conf.type = "plain")
+plot(surv_R20_fit, col = "black", xlab = "Time", ylab = "Survival function", main = "K-M, Exp, Weibull estimate of survival function(20th HR, Right handed)")
+
+
+lamda_R20_exp <- sum(data_R20$X20thC)/sum(data_R20$X20thHR)
+curve(exp(-lamda_R20_exp*x), from = 0, to = max(data_R20$X20thHR) + 1, col = "blue", add = T) ## exp로 했을 때 그림
+
+data_R20_wei <- fit_data(data = data_R20, dist = "weibull", time = "X20thHR", censor = "X20thC" )
+alpha_R20_wei <- data_R20_wei$estimate[1] 
+lamda_R20_wei <-  sum(data_R20$X20thC)/sum((data_R20$X20thHR)^alpha_R20_wei)
+curve(exp(-lamda_R20_wei*(x^alpha_R20_wei)), from = 0, to = max(data_R20$X20thHR) + 1, col = "red", add = T) ## weilbull로 했을 때 그림
+
+legend("bottomleft", legend=c("K-M","Exp","Weibull") ,lty = rep(1,3),col=c("black","blue","red"))
+
+# data_R20_1 <- data %>%  filter(B.group == 1)
+# s_R20 <- Surv(time =  data_R20_1$X20thHR, event = data_R20_1$X20thC)
+# s_R20_1 <- survreg(s_R20 ~ factor(A.group) + factor(H.group) + factor(W.group) + factor(League), dist = "weibull", data = data_R20_1)
+# summary(s_R20_1)  ## warning ??
+# 
+# ss_R20 <- Surv(time = data$X20thHR, event = data$X20thC)
+# ss_R20_1 <- survreg(ss_R20 ~ factor(B.group), dist = "weibull", data = data)
+# summary(ss_R20_1) ## warning??
+# 
+# s_R20_fit <- survfit(s_R20 ~ 1)
+# s_R20_fit_sum <- summary(s_R20_fit)
+# KM_surv_R20 <- s_R20_fit_sum$surv
+# log_time_R20 <- log(s_R20_fit_sum$time)
+# plot(log_time_R20, log(-log(KM_surv_R20)), type = "l", lty = 1)
+# abline(coef(lm(log(-log(KM_surv_R20))~log_time_R20)),col = "blue")
+
+
+##### Both and 20th
+
+data_B20 <- data %>% select(B.group,X20thHR,X20thC) %>% filter(B.group == 2)
+surv_data_B20 <- Surv(time = data_B20$X20thHR, event = data_B20$X20thC)
+
+surv_B20 <- Surv(time = data_B20$X20thHR, event = data_B20$X20thC )
+surv_B20_fit <- survfit(formula = surv_B20 ~ 1, data = surv_B20, conf.type = "plain")
+plot(surv_B20_fit, col = "black", xlab = "Time", ylab = "Survival function", main = "K-M, Exp, Weibull estimate of survival function(20th HR, Both handed)")
+
+lamda_B20_exp <- sum(data_B20$X20thC)/sum(data_B20$X20thHR)
+curve(exp(-lamda_B20_exp*x), from = 0, to = max(data_B20$X20thHR) + 1, col = "blue", add = T) ## exp로 했을 때 그림
+
+data_B20_wei <- fit_data(data = data_B20, dist = "weibull", time = "X20thHR", censor = "X20thC" )
+alpha_B20_wei <- data_B20_wei$estimate[1] 
+lamda_B20_wei <-  sum(data_B20$X20thC)/sum((data_B20$X20thHR)^alpha_B20_wei)
+curve(exp(-lamda_B20_wei*(x^alpha_B20_wei)), from = 0, to = max(data_B20$X20thHR) + 1, col = "red", add = T) ## weilbull로 했을 때 그림
+
+legend("bottomleft", legend=c("K-M","Exp","Weibull") ,lty = rep(1,3),col=c("black","blue","red"))
+
+# data_B20_1 <- data %>%  filter(B.group == 2)
+# s_B20 <- Surv(time =  data_B20_1$X20thHR, event = data_B20_1$X20thC)
+# s_B20_1 <- survreg(s_B20 ~ factor(A.group) + factor(H.group) + factor(W.group) + factor(League), dist = "weibull", data = data_B20_1)
+# summary(s_B20_1)  ## warning ??
+# 
+# ss_B20 <- Surv(time = data$X20thHR, event = data$X20thC)
+# ss_B20_1 <- survreg(ss_B20 ~ factor(B.group), dist = "weibull", data = data)
+# summary(ss_B20_1) ## warning ??
+# 
+# s_B20_fit <- survfit(s_B20 ~ 1)
+# s_B20_fit_sum <- summary(s_B20_fit)
+# KM_surv_B20 <- s_B20_fit_sum$surv
+# log_time_B20 <- log(s_B20_fit_sum$time)
+# plot(log_time_B20, log(-log(KM_surv_B20)), type = "l", lty = 1)
+# abline(coef(lm(log(-log(KM_surv_B20))~log_time_B20)),col = "blue")
+
+
+##### Left and 30th
+
+data_L30 <- data %>% select(B.group,X30thHR,X30thC) %>% filter(B.group == 1)
+surv_data_L30 <- Surv(time = data_L30$X30thHR, event = data_L30$X30thC)
+
+surv_L30 <- Surv(time = data_L30$X30thHR, event = data_L30$X30thC )
+surv_L30_fit <- survfit(formula = surv_L30 ~ 1, data = surv_L30, conf.type = "plain")
+plot(surv_L30_fit, col = "black", xlab = "Time", ylab = "Survival function", main = "K-M, Exp, Weibull estimate of survival function(30th HR, Left handed)")
+
+lamda_L30_exp <- sum(data_L30$X30thC)/sum(data_L30$X30thHR)
+curve(exp(-lamda_L30_exp*x), from = 0, to = max(data_L30$X30thHR) + 1, col = "blue", add = T) ## exp로 했을 때 그림
+
+data_L30_wei <- fit_data(data = data_L30, dist = "weibull", time = "X30thHR", censor = "X30thC" )
+alpha_L30_wei <- data_L30_wei$estimate[1] 
+lamda_L30_wei <-  sum(data_L30$X30thC)/sum((data_L30$X30thHR)^alpha_L30_wei)
+curve(exp(-lamda_L30_wei*(x^alpha_L30_wei)), from = 0, to = max(data_L30$X30thHR) + 1, col = "red", add = T) ## weilbull로 했을 때 그림
+
+legend("bottomleft", legend=c("K-M","Exp","Weibull") ,lty = rep(1,3),col=c("black","blue","red"))
+
+# data_L30_1 <- data %>%  filter(B.group == 1)
+# s_L30 <- Surv(time =  data_L30_1$X30thHR, event = data_L30_1$X30thC)
+# s_L30_1 <- survreg(s_L30 ~ factor(A.group) + factor(H.group) + factor(W.group) + factor(League), dist = "weibull", data = data_L30_1)
+# summary(s_L30_1)  ## warning ??
+# 
+# ss_L30 <- Surv(time = data$X30thHR, event = data$X30thC)
+# ss_L30_1 <- survreg(ss_L30 ~ factor(B.group), dist = "weibull", data = data)
+# summary(ss_L30_1) ## warning ??
+# 
+# s_L30_fit <- survfit(s_L30 ~ 1)
+# s_L30_fit_sum <- summary(s_L30_fit)
+# KM_surv_L30 <- s_L30_fit_sum$surv
+# log_time_L30 <- log(s_L30_fit_sum$time)
+# plot(log_time_L30, log(-log(KM_surv_L30)), type = "l", lty = 1)
+# abline(coef(lm(log(-log(KM_surv_L30))~log_time_L30)),col = "blue")
+
+
+##### Right and 30th
+
+data_R30 <- data %>% select(B.group,X30thHR,X30thC) %>% filter(B.group == 0)
+surv_data_R30 <- Surv(time = data_R30$X30thHR, event = data_R30$X30thC)
+
+surv_R30 <- Surv(time = data_R30$X30thHR, event = data_R30$X30thC )
+surv_R30_fit <- survfit(formula = surv_R30 ~ 1, data = surv_R30, conf.type = "plain")
+plot(surv_R30_fit, col = "black", xlab = "Time", ylab = "Survival function", main = "K-M, Exp, Weibull estimate of survival function(30th HR, Right handed)")
+
+lamda_R30_exp <- sum(data_R30$X30thC)/sum(data_R30$X30thHR)
+curve(exp(-lamda_R30_exp*x), from = 0, to = max(data_R30$X30thHR) + 1, col = "blue", add = T) ## exp로 했을 때 그림
+
+data_R30_wei <- fit_data(data = data_R30, dist = "weibull", time = "X30thHR", censor = "X30thC" )
+alpha_R30_wei <- data_R30_wei$estimate[1] 
+lamda_R30_wei <-  sum(data_R30$X30thC)/sum((data_R30$X30thHR)^alpha_R30_wei)
+curve(exp(-lamda_R30_wei*(x^alpha_R30_wei)), from = 0, to = max(data_R30$X30thHR) + 1, col = "red", add = T) ## weilbull로 했을 때 그림
+
+legend("bottomleft", legend=c("K-M","Exp","Weibull") ,lty = rep(1,3),col=c("black","blue","red"))
+
+# data_R30_1 <- data %>%  filter(B.group == 0)
+# s_R30 <- Surv(time =  data_R30_1$X30thHR, event = data_R30_1$X30thC)
+# s_R30_1 <- survreg(s_R30 ~ factor(A.group) + factor(H.group) + factor(W.group) + factor(League), dist = "weibull", data = data_R30_1)
+# summary(s_R30_1)  ## warning ??
+# 
+# ss_R30 <- Surv(time = data$X30thHR, event = data$X30thC)
+# ss_R30_1 <- survreg(ss_R30 ~ factor(B.group), dist = "weibull", data = data)
+# summary(ss_R30_1) ## warning ??
+# 
+# s_R30_fit <- survfit(s_R30 ~ 1)
+# s_R30_fit_sum <- summary(s_R30_fit)
+# KM_surv_R30 <- s_R30_fit_sum$surv
+# log_time_R30 <- log(s_R30_fit_sum$time)
+# plot(log_time_R30, log(-log(KM_surv_R30)), type = "l", lty = 1)
+# abline(coef(lm(log(-log(KM_surv_R30))~log_time_R30)),col = "blue")
+
+
+##### Both and 30th
+
+data_B30 <- data %>% select(B.group,X30thHR,X30thC) %>% filter(B.group == 2)
+surv_data_B30 <- Surv(time = data_B30$X30thHR, event = data_B30$X30thC)
+
+surv_B30 <- Surv(time = data_B30$X30thHR, event = data_B30$X30thC )
+surv_B30_fit <- survfit(formula = surv_B30 ~ 1, data = surv_B30, conf.type = "plain")
+plot(surv_B30_fit, col = "black", xlab = "Time", ylab = "Survival function", main = "K-M, Exp, Weibull estimate of survival function(30th HR, Both handed)")
+
+lamda_B30_exp <- sum(data_B30$X30thC)/sum(data_B30$X30thHR)
+curve(exp(-lamda_B30_exp*x), from = 0, to = max(data_B30$X30thHR) + 1, col = "blue", add = T) ## exp로 했을 때 그림
+
+data_B30_wei <- fit_data(data = data_B30, dist = "weibull", time = "X30thHR", censor = "X30thC" )
+alpha_B30_wei <- data_B30_wei$estimate[1] 
+lamda_B30_wei <-  sum(data_B30$X30thC)/sum((data_B30$X30thHR)^alpha_B30_wei)
+curve(exp(-lamda_B30_wei*(x^alpha_B30_wei)), from = 0, to = max(data_B30$X30thHR) + 1, col = "red", add = T) ## weilbull로 했을 때 그림
+
+legend("bottomleft", legend=c("K-M","Exp","Weibull") ,lty = rep(1,3),col=c("black","blue","red"))
+
+# data_B30_1 <- data %>%  filter(B.group == 2)
+# s_B30 <- Surv(time =  data_B30_1$X30thHR, event = data_B30_1$X30thC)
+# s_B30_1 <- survreg(s_B30 ~ factor(A.group) + factor(H.group) + factor(W.group) + factor(League), dist = "weibull", data = data_B30_1)
+# summary(s_B30_1)  ## warning ??
+# 
+# ss_B30 <- Surv(time = data$X30thHR, event = data$X30thC)
+# ss_B30_1 <- survreg(ss_B30 ~ factor(B.group), dist = "weibull", data = data)
+# summary(ss_B30_1) ## warning ??
+# 
+# s_B30_fit <- survfit(s_B30 ~ 1)
+# s_B30_fit_sum <- summary(s_B30_fit)
+# KM_surv_B30 <- s_B30_fit_sum$surv
+# log_time_B30 <- log(s_B30_fit_sum$time)
+# plot(log_time_B30, log(-log(KM_surv_B30)), type = "l", lty = 1)
+# abline(coef(lm(log(-log(KM_surv_B30))~log_time_B30)),col = "blue")
+
+
+##### AFT
+
+###### 5
+
+# bat만
+
+s_5 <- Surv(time =  data$X5thHR, event = data$X5thC)
+AFT_5 <- survreg(s_5 ~ factor(B.group), dist = "weibull", data = data)
+summary(AFT_5)
+AFT_5_1 <- survreg(s_5 ~ factor(B.group, levels = c(1,0,2)), dist = "weibull", data = data)
+summary(AFT_5_1)
+
+
+#age
+
+s_5 <- Surv(time =  data$X5thHR, event = data$X5thC)
+AFT_5_age <- survreg(s_5 ~ factor(B.group) + factor(A.group), dist = "weibull", data = data)
+summary(AFT_5_age)
+AFT_5_1_age <- survreg(s_5 ~ factor(B.group, levels = c(1,0,2)) + factor(A.group), dist = "weibull", data = data)
+summary(AFT_5_1_age)
+
+
+#height
+
+s_5 <- Surv(time =  data$X5thHR, event = data$X5thC)
+AFT_5_height <- survreg(s_5 ~ factor(B.group) + factor(H.group), dist = "weibull", data = data)
+summary(AFT_5_height)
+AFT_5_1_height <- survreg(s_5 ~ factor(B.group, levels = c(1,0,2)) + factor(H.group), dist = "weibull", data = data)
+summary(AFT_5_1_height)
+
+
+#weight
+
+s_5 <- Surv(time =  data$X5thHR, event = data$X5thC)
+AFT_5_weight <- survreg(s_5 ~ factor(B.group) + factor(W.group), dist = "weibull", data = data)
+summary(AFT_5_weight)
+AFT_5_1_weight <- survreg(s_5 ~ factor(B.group, levels = c(1,0,2)) + factor(W.group), dist = "weibull", data = data)
+summary(AFT_5_1_weight)
+
+
+
+
+#league
+
+s_5 <- Surv(time =  data$X5thHR, event = data$X5thC)
+AFT_5_league <- survreg(s_5 ~ factor(B.group) + factor(League), dist = "weibull", data = data)
+summary(AFT_5_league)
+AFT_5_1_league <- survreg(s_5 ~ factor(B.group, levels = c(1,0,2)) + factor(League), dist = "weibull", data = data)
+summary(AFT_5_1_league)
+
+
+
+mu_hat_5_age <- AFT_5_age$coefficients[1]
+sigma_hat_5_age <- AFT_5_age$scale
+lamda_hat_5_age <- exp(-mu_hat_5_age/sigma_hat_5_age)
+alpha_hat_5_age <- 1/sigma_hat_5_age
+
+c(lamda_hat_5_age,alpha_hat_5_age)
+
+beta_hat_5_age <- -AFT_5_age$coefficients[2:length(AFT_5_age$coefficients)] / sigma_hat_5_age
+exp(beta_hat_5_age)
+
+mu_hat_5_1_age <- AFT_5_1_age$coefficients[1]
+sigma_hat_5_1_age <- AFT_5_1_age$scale
+lamda_hat_5_1_age <- exp(-mu_hat_5_1_age/sigma_hat_5_1_age)
+alpha_hat_5_1_age <- 1/sigma_hat_5_1_age
+
+c(lamda_hat_5_1_age,alpha_hat_5_1_age)
+
+beta_hat_5_1_age <- -AFT_5_1_age$coefficients[2:length(AFT_5_1_age$coefficients)] / sigma_hat_5_1_age
+exp(beta_hat_5_1_age)
+
+
+mu_hat_5_height <- AFT_5_height$coefficients[1]
+sigma_hat_5_height <- AFT_5_height$scale
+lamda_hat_5_height <- exp(-mu_hat_5_height/sigma_hat_5_height)
+alpha_hat_5_height <- 1/sigma_hat_5_height
+
+c(lamda_hat_5_height,alpha_hat_5_height)
+
+beta_hat_5_height <- -AFT_5_height$coefficients[2:length(AFT_5_height$coefficients)] / sigma_hat_5_height
+exp(beta_hat_5_height)
+
+mu_hat_5_1_height <- AFT_5_1_height$coefficients[1]
+sigma_hat_5_1_height <- AFT_5_1_height$scale
+lamda_hat_5_1_height <- exp(-mu_hat_5_1_height/sigma_hat_5_1_height)
+alpha_hat_5_1_height <- 1/sigma_hat_5_1_height
+
+c(lamda_hat_5_1_height,alpha_hat_5_1_height)
+
+beta_hat_5_1_height <- -AFT_5_1_height$coefficients[2:length(AFT_5_1_height$coefficients)] / sigma_hat_5_1_height
+exp(beta_hat_5_1_height)
+
+
+mu_hat_5_weight <- AFT_5_weight$coefficients[1]
+sigma_hat_5_weight <- AFT_5_weight$scale
+lamda_hat_5_weight <- exp(-mu_hat_5_weight/sigma_hat_5_weight)
+alpha_hat_5_weight <- 1/sigma_hat_5_weight
+
+c(lamda_hat_5_weight,alpha_hat_5_weight)
+
+beta_hat_5_weight <- -AFT_5_weight$coefficients[2:length(AFT_5_weight$coefficients)] / sigma_hat_5_weight
+exp(beta_hat_5_weight)
+
+mu_hat_5_1_weight <- AFT_5_1_weight$coefficients[1]
+sigma_hat_5_1_weight <- AFT_5_1_weight$scale
+lamda_hat_5_1_weight <- exp(-mu_hat_5_1_weight/sigma_hat_5_1_weight)
+alpha_hat_5_1_weight <- 1/sigma_hat_5_1_weight
+
+c(lamda_hat_5_1_weight,alpha_hat_5_1_weight)
+
+beta_hat_5_1_weight <- -AFT_5_1_weight$coefficients[2:length(AFT_5_1_weight$coefficients)] / sigma_hat_5_1_weight
+exp(beta_hat_5_1_weight)
+
+
+mu_hat_5_league <- AFT_5_league$coefficients[1]
+sigma_hat_5_league <- AFT_5_league$scale
+lamda_hat_5_league <- exp(-mu_hat_5_league/sigma_hat_5_league)
+alpha_hat_5_league <- 1/sigma_hat_5_league
+
+c(lamda_hat_5_league,alpha_hat_5_league)
+
+beta_hat_5_league <- -AFT_5_league$coefficients[2:length(AFT_5_league$coefficients)] / sigma_hat_5_league
+exp(beta_hat_5_league)
+
+mu_hat_5_1_league <- AFT_5_1_league$coefficients[1]
+sigma_hat_5_1_league <- AFT_5_1_league$scale
+lamda_hat_5_1_league <- exp(-mu_hat_5_1_league/sigma_hat_5_1_league)
+alpha_hat_5_1_league <- 1/sigma_hat_5_1_league
+
+c(lamda_hat_5_1_league,alpha_hat_5_1_league)
+
+beta_hat_5_1_league <- -AFT_5_1_league$coefficients[2:length(AFT_5_1_league$coefficients)] / sigma_hat_5_1_league
+exp(beta_hat_5_1_league)
+
+
+
+
+####################### 10
+
+
+# bat만
+
+s_10 <- Surv(time =  data$X10thHR, event = data$X10thC)
+AFT_10 <- survreg(s_10 ~ factor(B.group), dist = "weibull", data = data)
+summary(AFT_10)
+AFT_10_1 <- survreg(s_10 ~ factor(B.group, levels = c(1,0,2)), dist = "weibull", data = data)
+summary(AFT_10_1)
+
+
+#age
+
+s_10 <- Surv(time =  data$X10thHR, event = data$X10thC)
+AFT_10_age <- survreg(s_10 ~ factor(B.group) + factor(A.group), dist = "weibull", data = data)
+summary(AFT_10_age)
+AFT_10_1_age <- survreg(s_10 ~ factor(B.group, levels = c(1,0,2)) + factor(A.group), dist = "weibull", data = data)
+summary(AFT_10_1_age)
+
+
+#height
+
+s_10 <- Surv(time =  data$X10thHR, event = data$X10thC)
+AFT_10_height <- survreg(s_10 ~ factor(B.group) + factor(H.group), dist = "weibull", data = data)
+summary(AFT_10_height)
+AFT_10_1_height <- survreg(s_10 ~ factor(B.group, levels = c(1,0,2)) + factor(H.group), dist = "weibull", data = data)
+summary(AFT_10_1_height)
+
+
+#weight
+
+s_10 <- Surv(time =  data$X10thHR, event = data$X10thC)
+AFT_10_weight <- survreg(s_10 ~ factor(B.group) + factor(W.group), dist = "weibull", data = data)
+summary(AFT_10_weight)
+AFT_10_1_weight <- survreg(s_10 ~ factor(B.group, levels = c(1,0,2)) + factor(W.group), dist = "weibull", data = data)
+summary(AFT_10_1_weight)
+
+
+
+
+#league
+
+s_10 <- Surv(time =  data$X10thHR, event = data$X10thC)
+AFT_10_league <- survreg(s_10 ~ factor(B.group) + factor(League), dist = "weibull", data = data)
+summary(AFT_10_league)
+AFT_10_1_league <- survreg(s_10 ~ factor(B.group, levels = c(1,0,2)) + factor(League), dist = "weibull", data = data)
+summary(AFT_10_1_league)
+
+
+
+mu_hat_10_age <- AFT_10_age$coefficients[1]
+sigma_hat_10_age <- AFT_10_age$scale
+lamda_hat_10_age <- exp(-mu_hat_10_age/sigma_hat_10_age)
+alpha_hat_10_age <- 1/sigma_hat_10_age
+
+c(lamda_hat_10_age,alpha_hat_10_age)
+
+beta_hat_10_age <- -AFT_10_age$coefficients[2:length(AFT_10_age$coefficients)] / sigma_hat_10_age
+exp(beta_hat_10_age)
+
+mu_hat_10_1_age <- AFT_10_1_age$coefficients[1]
+sigma_hat_10_1_age <- AFT_10_1_age$scale
+lamda_hat_10_1_age <- exp(-mu_hat_10_1_age/sigma_hat_10_1_age)
+alpha_hat_10_1_age <- 1/sigma_hat_10_1_age
+
+c(lamda_hat_10_1_age,alpha_hat_10_1_age)
+
+beta_hat_10_1_age <- -AFT_10_1_age$coefficients[2:length(AFT_10_1_age$coefficients)] / sigma_hat_10_1_age
+exp(beta_hat_10_1_age)
+
+
+mu_hat_10_height <- AFT_10_height$coefficients[1]
+sigma_hat_10_height <- AFT_10_height$scale
+lamda_hat_10_height <- exp(-mu_hat_10_height/sigma_hat_10_height)
+alpha_hat_10_height <- 1/sigma_hat_10_height
+
+c(lamda_hat_10_height,alpha_hat_10_height)
+
+beta_hat_10_height <- -AFT_10_height$coefficients[2:length(AFT_10_height$coefficients)] / sigma_hat_10_height
+exp(beta_hat_10_height)
+
+mu_hat_10_1_height <- AFT_10_1_height$coefficients[1]
+sigma_hat_10_1_height <- AFT_10_1_height$scale
+lamda_hat_10_1_height <- exp(-mu_hat_10_1_height/sigma_hat_10_1_height)
+alpha_hat_10_1_height <- 1/sigma_hat_10_1_height
+
+c(lamda_hat_10_1_height,alpha_hat_10_1_height)
+
+beta_hat_10_1_height <- -AFT_10_1_height$coefficients[2:length(AFT_10_1_height$coefficients)] / sigma_hat_10_1_height
+exp(beta_hat_10_1_height)
+
+
+mu_hat_10_weight <- AFT_10_weight$coefficients[1]
+sigma_hat_10_weight <- AFT_10_weight$scale
+lamda_hat_10_weight <- exp(-mu_hat_10_weight/sigma_hat_10_weight)
+alpha_hat_10_weight <- 1/sigma_hat_10_weight
+
+c(lamda_hat_10_weight,alpha_hat_10_weight)
+
+beta_hat_10_weight <- -AFT_10_weight$coefficients[2:length(AFT_10_weight$coefficients)] / sigma_hat_10_weight
+exp(beta_hat_10_weight)
+
+mu_hat_10_1_weight <- AFT_10_1_weight$coefficients[1]
+sigma_hat_10_1_weight <- AFT_10_1_weight$scale
+lamda_hat_10_1_weight <- exp(-mu_hat_10_1_weight/sigma_hat_10_1_weight)
+alpha_hat_10_1_weight <- 1/sigma_hat_10_1_weight
+
+c(lamda_hat_10_1_weight,alpha_hat_10_1_weight)
+
+beta_hat_10_1_weight <- -AFT_10_1_weight$coefficients[2:length(AFT_10_1_weight$coefficients)] / sigma_hat_10_1_weight
+exp(beta_hat_10_1_weight)
+
+
+mu_hat_10_league <- AFT_10_league$coefficients[1]
+sigma_hat_10_league <- AFT_10_league$scale
+lamda_hat_10_league <- exp(-mu_hat_10_league/sigma_hat_10_league)
+alpha_hat_10_league <- 1/sigma_hat_10_league
+
+c(lamda_hat_10_league,alpha_hat_10_league)
+
+beta_hat_10_league <- -AFT_10_league$coefficients[2:length(AFT_10_league$coefficients)] / sigma_hat_10_league
+exp(beta_hat_10_league)
+
+mu_hat_10_1_league <- AFT_10_1_league$coefficients[1]
+sigma_hat_10_1_league <- AFT_10_1_league$scale
+lamda_hat_10_1_league <- exp(-mu_hat_10_1_league/sigma_hat_10_1_league)
+alpha_hat_10_1_league <- 1/sigma_hat_10_1_league
+
+c(lamda_hat_10_1_league,alpha_hat_10_1_league)
+
+beta_hat_10_1_league <- -AFT_10_1_league$coefficients[2:length(AFT_10_1_league$coefficients)] / sigma_hat_10_1_league
+exp(beta_hat_10_1_league)
+
+
+
+####################### 20
+
+# bat만
+
+s_20 <- Surv(time =  data$X20thHR, event = data$X20thC)
+AFT_20 <- survreg(s_20 ~ factor(B.group), dist = "weibull", data = data)
+summary(AFT_20)
+AFT_20_1 <- survreg(s_20 ~ factor(B.group, levels = c(1,0,2)), dist = "weibull", data = data)
+summary(AFT_20_1)
+
+#age
+
+s_20 <- Surv(time =  data$X20thHR, event = data$X20thC)
+AFT_20_age <- survreg(s_20 ~ factor(B.group) + factor(A.group), dist = "weibull", data = data)
+summary(AFT_20_age)
+AFT_20_1_age <- survreg(s_20 ~ factor(B.group, levels = c(1,0,2)) + factor(A.group), dist = "weibull", data = data)
+summary(AFT_20_1_age)
+
+
+#height
+
+s_20 <- Surv(time =  data$X20thHR, event = data$X20thC)
+AFT_20_height <- survreg(s_20 ~ factor(B.group) + factor(H.group), dist = "weibull", data = data)
+summary(AFT_20_height)
+AFT_20_1_height <- survreg(s_20 ~ factor(B.group, levels = c(1,0,2)) + factor(H.group), dist = "weibull", data = data)
+summary(AFT_20_1_height)
+
+
+#weight
+
+s_20 <- Surv(time =  data$X20thHR, event = data$X20thC)
+AFT_20_weight <- survreg(s_20 ~ factor(B.group) + factor(W.group), dist = "weibull", data = data)
+summary(AFT_20_weight)
+AFT_20_1_weight <- survreg(s_20 ~ factor(B.group, levels = c(1,0,2)) + factor(W.group), dist = "weibull", data = data)
+summary(AFT_20_1_weight)
+
+
+
+
+#league
+
+s_20 <- Surv(time =  data$X20thHR, event = data$X20thC)
+AFT_20_league <- survreg(s_20 ~ factor(B.group) + factor(League), dist = "weibull", data = data)
+summary(AFT_20_league)
+AFT_20_1_league <- survreg(s_20 ~ factor(B.group, levels = c(1,0,2)) + factor(League), dist = "weibull", data = data)
+summary(AFT_20_1_league)
+
+
+
+mu_hat_20_age <- AFT_20_age$coefficients[1]
+sigma_hat_20_age <- AFT_20_age$scale
+lamda_hat_20_age <- exp(-mu_hat_20_age/sigma_hat_20_age)
+alpha_hat_20_age <- 1/sigma_hat_20_age
+
+c(lamda_hat_20_age,alpha_hat_20_age)
+
+beta_hat_20_age <- -AFT_20_age$coefficients[2:length(AFT_20_age$coefficients)] / sigma_hat_20_age
+exp(beta_hat_20_age)
+
+mu_hat_20_1_age <- AFT_20_1_age$coefficients[1]
+sigma_hat_20_1_age <- AFT_20_1_age$scale
+lamda_hat_20_1_age <- exp(-mu_hat_20_1_age/sigma_hat_20_1_age)
+alpha_hat_20_1_age <- 1/sigma_hat_20_1_age
+
+c(lamda_hat_20_1_age,alpha_hat_20_1_age)
+
+beta_hat_20_1_age <- -AFT_20_1_age$coefficients[2:length(AFT_20_1_age$coefficients)] / sigma_hat_20_1_age
+exp(beta_hat_20_1_age)
+
+
+mu_hat_20_height <- AFT_20_height$coefficients[1]
+sigma_hat_20_height <- AFT_20_height$scale
+lamda_hat_20_height <- exp(-mu_hat_20_height/sigma_hat_20_height)
+alpha_hat_20_height <- 1/sigma_hat_20_height
+
+c(lamda_hat_20_height,alpha_hat_20_height)
+
+beta_hat_20_height <- -AFT_20_height$coefficients[2:length(AFT_20_height$coefficients)] / sigma_hat_20_height
+exp(beta_hat_20_height)
+
+mu_hat_20_1_height <- AFT_20_1_height$coefficients[1]
+sigma_hat_20_1_height <- AFT_20_1_height$scale
+lamda_hat_20_1_height <- exp(-mu_hat_20_1_height/sigma_hat_20_1_height)
+alpha_hat_20_1_height <- 1/sigma_hat_20_1_height
+
+c(lamda_hat_20_1_height,alpha_hat_20_1_height)
+
+beta_hat_20_1_height <- -AFT_20_1_height$coefficients[2:length(AFT_20_1_height$coefficients)] / sigma_hat_20_1_height
+exp(beta_hat_20_1_height)
+
+
+mu_hat_20_weight <- AFT_20_weight$coefficients[1]
+sigma_hat_20_weight <- AFT_20_weight$scale
+lamda_hat_20_weight <- exp(-mu_hat_20_weight/sigma_hat_20_weight)
+alpha_hat_20_weight <- 1/sigma_hat_20_weight
+
+c(lamda_hat_20_weight,alpha_hat_20_weight)
+
+beta_hat_20_weight <- -AFT_20_weight$coefficients[2:length(AFT_20_weight$coefficients)] / sigma_hat_20_weight
+exp(beta_hat_20_weight)
+
+mu_hat_20_1_weight <- AFT_20_1_weight$coefficients[1]
+sigma_hat_20_1_weight <- AFT_20_1_weight$scale
+lamda_hat_20_1_weight <- exp(-mu_hat_20_1_weight/sigma_hat_20_1_weight)
+alpha_hat_20_1_weight <- 1/sigma_hat_20_1_weight
+
+c(lamda_hat_20_1_weight,alpha_hat_20_1_weight)
+
+beta_hat_20_1_weight <- -AFT_20_1_weight$coefficients[2:length(AFT_20_1_weight$coefficients)] / sigma_hat_20_1_weight
+exp(beta_hat_20_1_weight)
+
+
+mu_hat_20_league <- AFT_20_league$coefficients[1]
+sigma_hat_20_league <- AFT_20_league$scale
+lamda_hat_20_league <- exp(-mu_hat_20_league/sigma_hat_20_league)
+alpha_hat_20_league <- 1/sigma_hat_20_league
+
+c(lamda_hat_20_league,alpha_hat_20_league)
+
+beta_hat_20_league <- -AFT_20_league$coefficients[2:length(AFT_20_league$coefficients)] / sigma_hat_20_league
+exp(beta_hat_20_league)
+
+mu_hat_20_1_league <- AFT_20_1_league$coefficients[1]
+sigma_hat_20_1_league <- AFT_20_1_league$scale
+lamda_hat_20_1_league <- exp(-mu_hat_20_1_league/sigma_hat_20_1_league)
+alpha_hat_20_1_league <- 1/sigma_hat_20_1_league
+
+c(lamda_hat_20_1_league,alpha_hat_20_1_league)
+
+beta_hat_20_1_league <- -AFT_20_1_league$coefficients[2:length(AFT_20_1_league$coefficients)] / sigma_hat_20_1_league
+exp(beta_hat_20_1_league)
+
+
+
+####################### 30
+
+# bat만
+
+s_30 <- Surv(time =  data$X30thHR, event = data$X30thC)
+AFT_30 <- survreg(s_30 ~ factor(B.group), dist = "weibull", data = data)
+summary(AFT_30)
+AFT_30_1 <- survreg(s_30 ~ factor(B.group, levels = c(1,0,2)), dist = "weibull", data = data)
+summary(AFT_30_1)
+
+#age
+
+s_30 <- Surv(time =  data$X30thHR, event = data$X30thC)
+AFT_30_age <- survreg(s_30 ~ factor(B.group) + factor(A.group), dist = "weibull", data = data)
+summary(AFT_30_age)
+AFT_30_1_age <- survreg(s_30 ~ factor(B.group, levels = c(1,0,2)) + factor(A.group), dist = "weibull", data = data)
+summary(AFT_30_1_age)
+
+
+#height
+
+s_30 <- Surv(time =  data$X30thHR, event = data$X30thC)
+AFT_30_height <- survreg(s_30 ~ factor(B.group) + factor(H.group), dist = "weibull", data = data)
+summary(AFT_30_height)
+AFT_30_1_height <- survreg(s_30 ~ factor(B.group, levels = c(1,0,2)) + factor(H.group), dist = "weibull", data = data)
+summary(AFT_30_1_height)
+
+
+#weight
+
+s_30 <- Surv(time =  data$X30thHR, event = data$X30thC)
+AFT_30_weight <- survreg(s_30 ~ factor(B.group) + factor(W.group), dist = "weibull", data = data)
+summary(AFT_30_weight)
+AFT_30_1_weight <- survreg(s_30 ~ factor(B.group, levels = c(1,0,2)) + factor(W.group), dist = "weibull", data = data)
+summary(AFT_30_1_weight)
+
+
+
+
+#league
+
+s_30 <- Surv(time =  data$X30thHR, event = data$X30thC)
+AFT_30_league <- survreg(s_30 ~ factor(B.group) + factor(League), dist = "weibull", data = data)
+summary(AFT_30_league)
+AFT_30_1_league <- survreg(s_30 ~ factor(B.group, levels = c(1,0,2)) + factor(League), dist = "weibull", data = data)
+summary(AFT_30_1_league)
+
+
+
+mu_hat_30_age <- AFT_30_age$coefficients[1]
+sigma_hat_30_age <- AFT_30_age$scale
+lamda_hat_30_age <- exp(-mu_hat_30_age/sigma_hat_30_age)
+alpha_hat_30_age <- 1/sigma_hat_30_age
+
+c(lamda_hat_30_age,alpha_hat_30_age)
+
+beta_hat_30_age <- -AFT_30_age$coefficients[2:length(AFT_30_age$coefficients)] / sigma_hat_30_age
+exp(beta_hat_30_age)
+
+mu_hat_30_1_age <- AFT_30_1_age$coefficients[1]
+sigma_hat_30_1_age <- AFT_30_1_age$scale
+lamda_hat_30_1_age <- exp(-mu_hat_30_1_age/sigma_hat_30_1_age)
+alpha_hat_30_1_age <- 1/sigma_hat_30_1_age
+
+c(lamda_hat_30_1_age,alpha_hat_30_1_age)
+
+beta_hat_30_1_age <- -AFT_30_1_age$coefficients[2:length(AFT_30_1_age$coefficients)] / sigma_hat_30_1_age
+exp(beta_hat_30_1_age)
+
+
+mu_hat_30_height <- AFT_30_height$coefficients[1]
+sigma_hat_30_height <- AFT_30_height$scale
+lamda_hat_30_height <- exp(-mu_hat_30_height/sigma_hat_30_height)
+alpha_hat_30_height <- 1/sigma_hat_30_height
+
+c(lamda_hat_30_height,alpha_hat_30_height)
+
+beta_hat_30_height <- -AFT_30_height$coefficients[2:length(AFT_30_height$coefficients)] / sigma_hat_30_height
+exp(beta_hat_30_height)
+
+mu_hat_30_1_height <- AFT_30_1_height$coefficients[1]
+sigma_hat_30_1_height <- AFT_30_1_height$scale
+lamda_hat_30_1_height <- exp(-mu_hat_30_1_height/sigma_hat_30_1_height)
+alpha_hat_30_1_height <- 1/sigma_hat_30_1_height
+
+c(lamda_hat_30_1_height,alpha_hat_30_1_height)
+
+beta_hat_30_1_height <- -AFT_30_1_height$coefficients[2:length(AFT_30_1_height$coefficients)] / sigma_hat_30_1_height
+exp(beta_hat_30_1_height)
+
+
+mu_hat_30_weight <- AFT_30_weight$coefficients[1]
+sigma_hat_30_weight <- AFT_30_weight$scale
+lamda_hat_30_weight <- exp(-mu_hat_30_weight/sigma_hat_30_weight)
+alpha_hat_30_weight <- 1/sigma_hat_30_weight
+
+c(lamda_hat_30_weight,alpha_hat_30_weight)
+
+beta_hat_30_weight <- -AFT_30_weight$coefficients[2:length(AFT_30_weight$coefficients)] / sigma_hat_30_weight
+exp(beta_hat_30_weight)
+
+mu_hat_30_1_weight <- AFT_30_1_weight$coefficients[1]
+sigma_hat_30_1_weight <- AFT_30_1_weight$scale
+lamda_hat_30_1_weight <- exp(-mu_hat_30_1_weight/sigma_hat_30_1_weight)
+alpha_hat_30_1_weight <- 1/sigma_hat_30_1_weight
+
+c(lamda_hat_30_1_weight,alpha_hat_30_1_weight)
+
+beta_hat_30_1_weight <- -AFT_30_1_weight$coefficients[2:length(AFT_30_1_weight$coefficients)] / sigma_hat_30_1_weight
+exp(beta_hat_30_1_weight)
+
+
+mu_hat_30_league <- AFT_30_league$coefficients[1]
+sigma_hat_30_league <- AFT_30_league$scale
+lamda_hat_30_league <- exp(-mu_hat_30_league/sigma_hat_30_league)
+alpha_hat_30_league <- 1/sigma_hat_30_league
+
+c(lamda_hat_30_league,alpha_hat_30_league)
+
+beta_hat_30_league <- -AFT_30_league$coefficients[2:length(AFT_30_league$coefficients)] / sigma_hat_30_league
+exp(beta_hat_30_league)
+
+mu_hat_30_1_league <- AFT_30_1_league$coefficients[1]
+sigma_hat_30_1_league <- AFT_30_1_league$scale
+lamda_hat_30_1_league <- exp(-mu_hat_30_1_league/sigma_hat_30_1_league)
+alpha_hat_30_1_league <- 1/sigma_hat_30_1_league
+
+c(lamda_hat_30_1_league,alpha_hat_30_1_league)
+
+beta_hat_30_1_league <- -AFT_30_1_league$coefficients[2:length(AFT_30_1_league$coefficients)] / sigma_hat_30_1_league
+exp(beta_hat_30_1_league)
+
+##### tie 확인
+sf_5 <- survfit(s_5 ~1)
+summary(sf_5)$n.event
+
+sf_10 <- survfit(s_10 ~1)
+summary(sf_10)$n.event
+
+sf_20 <- survfit(s_20 ~1)
+summary(sf_20)$n.event
+
+sf_30 <- survfit(s_30 ~1)
+summary(sf_30)$n.event
+
+
+##### diagnostics -> 이거는 왠지 위에서 짜놨던 타수 + 좌우로 해야할 듯
+
+KM_surv_5 <- summary(sf_5)$surv
+log_time_5 <- log(summary(sf_5)$time)
+plot(log_time_5, log(-log(KM_surv_5)), type = "l", lty = 1, xlab = "log(t)", ylab = "log(-log(S(t))", main = "Weibull diagnostic plot (5th HR)")
+abline(coef(lm(log(-log(KM_surv_5))~log_time_5)),col = "blue")
+
+KM_surv_10 <- summary(sf_10)$surv
+log_time_10 <- log(summary(sf_10)$time)
+plot(log_time_10, log(-log(KM_surv_10)), type = "l", lty = 1, xlab = "log(t)", ylab = "log(-log(S(t))", main = "Weibull diagnostic plot (10th HR)")
+abline(coef(lm(log(-log(KM_surv_10))~log_time_10)),col = "blue")
+
+KM_surv_20 <- summary(sf_20)$surv
+log_time_20 <- log(summary(sf_20)$time)
+plot(log_time_20, log(-log(KM_surv_20)), type = "l", lty = 1, xlab = "log(t)", ylab = "log(-log(S(t))", main = "Weibull diagnostic plot (20th HR)")
+abline(coef(lm(log(-log(KM_surv_20))~log_time_20)),col = "blue")
+
+KM_surv_30 <- summary(sf_30)$surv
+log_time_30 <- log(summary(sf_30)$time)
+plot(log_time_30, log(-log(KM_surv_30)), type = "l", lty = 1, xlab = "log(t)", ylab = "log(-log(S(t))", main = "Weibull diagnostic plot (30th HR)")
+abline(coef(lm(log(-log(KM_surv_30))~log_time_30)),col = "blue")
+
+
+
+
+
+############## cox ph
+
+########5
+
+#bat만
+
+s_5 <- Surv(time =  data$X5thHR, event = data$X5thC)
+COX_5 <- coxph(s_5 ~ factor(B.group), data = data)
+summary(COX_5)
+COX_5_1 <- coxph(s_5 ~ factor(B.group, levels = c(1,0,2)), data = data)
+summary(COX_5_1)
+
+#age
+
+s_5 <- Surv(time =  data$X5thHR, event = data$X5thC)
+COX_5_age <- coxph(s_5 ~ factor(B.group) + factor(A.group), data = data)
+summary(COX_5_age)
+COX_5_1_age <- coxph(s_5 ~ factor(B.group, levels = c(1,0,2)) + factor(A.group), data = data)
+summary(COX_5_1_age)
+
+
+#height
+
+s_5 <- Surv(time =  data$X5thHR, event = data$X5thC)
+COX_5_height <- coxph(s_5 ~ factor(B.group) + factor(H.group), data = data)
+summary(COX_5_height)
+COX_5_1_height <- coxph(s_5 ~ factor(B.group, levels = c(1,0,2)) + factor(H.group), data = data)
+summary(COX_5_1_height)
+
+
+#weight
+
+s_5 <- Surv(time =  data$X5thHR, event = data$X5thC)
+COX_5_weight <- coxph(s_5 ~ factor(B.group) + factor(W.group), data = data)
+summary(COX_5_weight)
+COX_5_1_weight <- coxph(s_5 ~ factor(B.group, levels = c(1,0,2)) + factor(W.group), data = data)
+summary(COX_5_1_weight)
+
+
+
+#league
+
+s_5 <- Surv(time =  data$X5thHR, event = data$X5thC)
+COX_5_league <- coxph(s_5 ~ factor(B.group) + factor(League), data = data)
+summary(COX_5_league)
+COX_5_1_league <- coxph(s_5 ~ factor(B.group, levels = c(1,0,2)) + factor(League), data = data)
+summary(COX_5_1_league)
+
+########10
+
+#bat만
+
+s_10 <- Surv(time =  data$X10thHR, event = data$X10thC)
+COX_10 <- coxph(s_10 ~ factor(B.group), data = data)
+summary(COX_10)
+COX_10_1 <- coxph(s_10 ~ factor(B.group, levels = c(1,0,2)), data = data)
+summary(COX_10_1)
+
+#age
+
+s_10 <- Surv(time =  data$X10thHR, event = data$X10thC)
+COX_10_age <- coxph(s_10 ~ factor(B.group) + factor(A.group), data = data)
+summary(COX_10_age)
+COX_10_1_age <- coxph(s_10 ~ factor(B.group, levels = c(1,0,2)) + factor(A.group), data = data)
+summary(COX_10_1_age)
+
+
+#height
+
+s_10 <- Surv(time =  data$X10thHR, event = data$X10thC)
+COX_10_height <- coxph(s_10 ~ factor(B.group) + factor(H.group), data = data)
+summary(COX_10_height)
+COX_10_1_height <- coxph(s_10 ~ factor(B.group, levels = c(1,0,2)) + factor(H.group), data = data)
+summary(COX_10_1_height)
+
+
+#weight
+
+s_10 <- Surv(time =  data$X10thHR, event = data$X10thC)
+COX_10_weight <- coxph(s_10 ~ factor(B.group) + factor(W.group), data = data)
+summary(COX_10_weight)
+COX_10_1_weight <- coxph(s_10 ~ factor(B.group, levels = c(1,0,2)) + factor(W.group), data = data)
+summary(COX_10_1_weight)
+
+
+
+#league
+
+s_10 <- Surv(time =  data$X10thHR, event = data$X10thC)
+COX_10_league <- coxph(s_10 ~ factor(B.group) + factor(League), data = data)
+summary(COX_10_league)
+COX_10_1_league <- coxph(s_10 ~ factor(B.group, levels = c(1,0,2)) + factor(League), data = data)
+summary(COX_10_1_league)
+
+
+
+########20
+
+#bat만
+
+s_20 <- Surv(time =  data$X20thHR, event = data$X20thC)
+COX_20 <- coxph(s_20 ~ factor(B.group), data = data)
+summary(COX_20)
+COX_20_1 <- coxph(s_20 ~ factor(B.group, levels = c(1,0,2)), data = data)
+summary(COX_20_1)
+
+
+#age
+
+s_20 <- Surv(time =  data$X20thHR, event = data$X20thC)
+COX_20_age <- coxph(s_20 ~ factor(B.group) + factor(A.group), data = data)
+summary(COX_20_age)
+COX_20_1_age <- coxph(s_20 ~ factor(B.group, levels = c(1,0,2)) + factor(A.group), data = data)
+summary(COX_20_1_age)
+
+
+#height
+
+s_20 <- Surv(time =  data$X20thHR, event = data$X20thC)
+COX_20_height <- coxph(s_20 ~ factor(B.group) + factor(H.group), data = data)
+summary(COX_20_height)
+COX_20_1_height <- coxph(s_20 ~ factor(B.group, levels = c(1,0,2)) + factor(H.group), data = data)
+summary(COX_20_1_height)
+
+
+#weight
+
+s_20 <- Surv(time =  data$X20thHR, event = data$X20thC)
+COX_20_weight <- coxph(s_20 ~ factor(B.group) + factor(W.group), data = data)
+summary(COX_20_weight)
+COX_20_1_weight <- coxph(s_20 ~ factor(B.group, levels = c(1,0,2)) + factor(W.group), data = data)
+summary(COX_20_1_weight)
+
+
+
+#league
+
+s_20 <- Surv(time =  data$X20thHR, event = data$X20thC)
+COX_20_league <- coxph(s_20 ~ factor(B.group) + factor(League), data = data)
+summary(COX_20_league)
+COX_20_1_league <- coxph(s_20 ~ factor(B.group, levels = c(1,0,2)) + factor(League), data = data)
+summary(COX_20_1_league)
+
+
+
+########30
+
+#bat만
+
+s_30 <- Surv(time =  data$X30thHR, event = data$X30thC)
+COX_30 <- coxph(s_30 ~ factor(B.group), data = data)
+summary(COX_30)
+COX_30_1 <- coxph(s_30 ~ factor(B.group, levels = c(1,0,2)), data = data)
+summary(COX_30_1)
+
+#age
+
+s_30 <- Surv(time =  data$X30thHR, event = data$X30thC)
+COX_30_age <- coxph(s_30 ~ factor(B.group) + factor(A.group), data = data)
+summary(COX_30_age)
+COX_30_1_age <- coxph(s_30 ~ factor(B.group, levels = c(1,0,2)) + factor(A.group), data = data)
+summary(COX_30_1_age)
+
+
+#height
+
+s_30 <- Surv(time =  data$X30thHR, event = data$X30thC)
+COX_30_height <- coxph(s_30 ~ factor(B.group) + factor(H.group), data = data)
+summary(COX_30_height)
+COX_30_1_height <- coxph(s_30 ~ factor(B.group, levels = c(1,0,2)) + factor(H.group), data = data)
+summary(COX_30_1_height)
+
+
+#weight
+
+s_30 <- Surv(time =  data$X30thHR, event = data$X30thC)
+COX_30_weight <- coxph(s_30 ~ factor(B.group) + factor(W.group), data = data)
+summary(COX_30_weight)
+COX_30_1_weight <- coxph(s_30 ~ factor(B.group, levels = c(1,0,2)) + factor(W.group), data = data)
+summary(COX_30_1_weight)
+
+
+
+#league
+
+s_30 <- Surv(time =  data$X30thHR, event = data$X30thC)
+COX_30_league <- coxph(s_30 ~ factor(B.group) + factor(League), data = data)
+summary(COX_30_league)
+COX_30_1_league <- coxph(s_30 ~ factor(B.group, levels = c(1,0,2)) + factor(League), data = data)
+summary(COX_30_1_league)
+
+
+```
+

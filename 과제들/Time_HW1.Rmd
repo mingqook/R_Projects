@@ -1,0 +1,181 @@
+---
+title: "Timeseires_HW1"
+author: "김민국"
+date: '2020-04-01 '
+header-includes:
+  - \usepackage[hangul]{kotex}
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(stringr)
+library(zoo)
+library(ggplot2)
+```
+
+
+```{r echo=TRUE, eval=TRUE}
+#### 7번
+
+x0 <- 0
+k0 <- c()
+
+set.seed(1)
+for(i in 1:10001){
+  k0[i] <- x0
+  e <- rnorm(1)
+  x0 <- (0.3*x0) + e
+}
+plot(k0, type = "o")
+
+set.seed(2)
+for(i in 1:10001){
+  k0[i] <- x0
+  e <- rnorm(1)
+  x0 <- (0.3*x0) + e
+}
+plot(k0, type = "o")
+
+set.seed(3)
+for(i in 1:10001){
+  k0[i] <- x0
+  e <- rnorm(1)
+  x0 <- (0.3*x0) + e
+}
+plot(k0, type = "o")
+
+set.seed(4)
+for(i in 1:10001){
+  k0[i] <- x0
+  e <- rnorm(1)
+  x0 <- (0.3*x0) + e
+}
+plot(k0, type = "o")
+```
+-> 4가지 경우의 seed를 통해서 t가 10000인 sample을 확인한 결과 X_t = 0.3X_(t-1) + e은 평균이 0이고 일정한 분산을 갖는다.  
+-> 또한 t에 관계없이 일정한 간격 당 같은 공분산을 갖는다고 볼 수 있으므로 정상시계열이다.  
+
+```{r echo=TRUE, eval=TRUE}
+k1 <- c()
+for(j in 1:10001){
+  k1[j] <- k0[j] +(j-1)
+}
+plot(k1, type = "o")
+```
+-> t가 10000인 경우까지 그래프를 그렸을 때 Y_t = X_t + t는 계속하여 증가하는 증가함수를 나타낸다.  
+-> 이는 발산하는 형태로 정상시계열이 아니다.
+
+```{r echo=TRUE, eval=TRUE}
+k2 <- c()
+for(l in 1:10001){
+ k2[l] <- k0[l] + sin(l)
+}
+plot(k2)
+```
+-> t가 10000인 경우를 그림 그렸을 때 Z_t = X_t + sin(t)는 0을 대칭으로 한다. 즉 0이 평균이다.  
+-> 또한 값들이 -4와 4 사이에 모두 위치해 분산을 가지고 있으며 t에 관계없이 일정한 간격 당 같은 공분산을 갖는다.  
+-> 따라서 이는 정상시계열로 생각할 수 있다. 
+
+```{r echo=TRUE, eval=TRUE}
+#### 8번
+kospi <- read.csv("ex_ch1_8.csv", stringsAsFactor = FALSE)
+kospi1 <- kospi[,1]
+kospi2 <- str_replace(kospi[,2],",","")
+kospi2 <- as.numeric(kospi2)
+kospi3 <- data.frame(kospi1,kospi2)
+colnames(kospi3) <- c("year","index")
+gg <- ggplot(data = kospi3, aes(x = year,y= index, group = 1))
+gg + geom_line(color = "blue", lwd = 1)
+```
+-> 주어진 자료의 코스피 현재지수를 일 별로 plot을 하면 위의 그림과 같다.  
+
+```{r echo=TRUE, eval=TRUE}
+kospi2_5 <- rollmean(kospi2, 5, align = "left")
+kospi3_5 <- data.frame(kospi1[1:length(kospi2_5)],kospi2_5)
+colnames(kospi3_5) <- c("year","index")
+gg + geom_line(color = "grey", lwd = 2) + 
+  geom_line(data = kospi3_5,aes(x = year,y= index, group = 1), color = "red") 
+```
+-> 그림의 회색 부분은 앞서 그린 일별 코스피 현재 지수의 plot이고 그 위의 빨간 선이 m = 5일 때의 추세선이다.  
+-> 둘은 매우 유사하게 움직이고 있다.  
+
+```{r echo=TRUE, eval=TRUE}
+kospi2_7 <- rollmean(kospi2, 7, align = "left")
+kospi3_7 <- data.frame(kospi1[1:length(kospi2_7)],kospi2_7)
+colnames(kospi3_7) <- c("year","index")
+gg + geom_line(color = "grey", lwd = 2) + 
+  geom_line(data = kospi3_7,aes(x = year,y= index, group = 1), color = "blue") 
+```
+-> 그림의 회색 부분은 앞서 그린 일별 코스피 현재 지수의 plot이고 그 위의 파란 선이 m = 7일 때의 추세선이다.  
+-> 둘은 매우 유사하게 움직이고 있다.  
+
+```{r echo=TRUE, eval=TRUE}
+kospi2_10 <- rollmean(kospi2, 10, align = "left")
+kospi3_10 <- data.frame(kospi1[1:length(kospi2_10)],kospi2_10)
+colnames(kospi3_10) <- c("year","index")
+gg + geom_line(color = "grey", lwd = 2) + 
+  geom_line(data = kospi3_10,aes(x = year,y= index, group = 1), color = "yellow") 
+```
+-> 그림의 회색 부분은 앞서 그린 일별 코스피 현재 지수의 plot이고 그 위의 노란 선이 m = 10일 때의 추세선이다.  
+-> 둘은 매우 유사하게 움직이고 있다.  
+
+```{r echo=TRUE, eval=TRUE}
+kospi2_15 <- rollmean(kospi2, 15, align = "left")
+kospi3_15 <- data.frame(kospi1[1:length(kospi2_15)],kospi2_15)
+colnames(kospi3_15) <- c("year","index")
+gg + geom_line(color = "grey", lwd = 2) + 
+  geom_line(data = kospi3_15,aes(x = year,y= index, group = 1), color = "green") 
+```
+-> 그림의 회색 부분은 앞서 그린 일별 코스피 현재 지수의 plot이고 그 위의 초록 선이 m = 15일 때의 추세선이다.  
+-> 둘은 매우 유사하게 움직이고 있다.  
+
+```{r echo=TRUE, eval=TRUE}
+kospi2_20 <- rollmean(kospi2, 20, align = "left")
+kospi3_20 <- data.frame(kospi1[1:length(kospi2_20)],kospi2_20)
+colnames(kospi3_20) <- c("year","index")
+gg + geom_line(color = "grey", lwd = 2) + 
+  geom_line(data = kospi3_20,aes(x = year,y= index, group = 1), color = "purple") 
+```
+-> 그림의 회색 부분은 앞서 그린 일별 코스피 현재 지수의 plot이고 그 위의 보라 선이 m = 20일 때의 추세선이다.  
+-> 둘은 매우 유사하게 움직이고 있다.  
+
+```{r echo=TRUE, eval=TRUE}
+gg + geom_line(color = "grey", lwd = 2) +
+  geom_line(data = kospi3_5,aes(x = year,y= index, group = 1), color = "red") +
+  geom_line(data = kospi3_7,aes(x = year,y= index, group = 1), color = "blue") +
+  geom_line(data = kospi3_10,aes(x = year,y= index, group = 1), color = "yellow") +
+  geom_line(data = kospi3_15,aes(x = year,y= index, group = 1), color = "green") +
+  geom_line(data = kospi3_20,aes(x = year,y= index, group = 1), color = "purple")
+
+```
+-> 모든 그림을 한 번에 그린 그림이다.  
+-> 대부분의 선들이 거의 정확히 겹치고 있어 같은 추세를 보이며 m의 값이 커질수록 smooth한 것을 볼 수 있다.  
+
+```{r echo=TRUE, eval=TRUE}
+#### 9번
+z <- read.csv("ex_ch1_9.csv", stringsAsFactors = FALSE)
+
+y <- matrix(z[21:100,2], nc = 1)
+a <- matrix(nr = 80, nc = 20)
+
+for(i in 1:20){
+  a[,21-i] <- z[i:(79+i),2]
+}
+ff <- lm(formula = y~a+0) #### 원점을 지나는 회귀모형
+ff1 <- coef(ff)
+
+ff1
+```
+-> 식 (1.2.2)는 최소제곱추정법을 통해 계수를 추정하는 방법이다.  
+-> 따라서 회귀분석의 계수를 구하되 해당 회구분석 모형이 원점을 지나야한다.  
+-> 따라서 원점을 지나는 회귀 분석을 진행 한 후 해당 계수들의 값이 위의 결과이다.  
+
+```{r echo=TRUE, eval=TRUE}
+results1 <- c()
+for(i in 1:10){
+  results1[i] <- sum(ff1*z[(99+i):(80+i),2])
+}
+results1
+```
+-> 앞서 구한 a_i들을 바탕으로 X_101 ~ X_110까지의 결과 값이 다음과 같다.  

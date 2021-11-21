@@ -1,0 +1,383 @@
+---
+title: "Untitled"
+author: "Ahn Chiung"
+date: "2019 10 4"
+header-includes:
+  - \usepackage[hangul]{kotex}
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## 2014-17374
+
+
+### Problem 1.
+
+#### Problem 1.1.
+
+```{r, include=FALSE}
+library("dplyr")
+library("tidyverse")
+library("ggplot2")
+```
+
+```{r}
+library(openintro)
+data(starbucks)
+?starbucks
+starbucks
+```
+
+결측치가 있는지 확인해본 결과, 다음과 같이 결측치는 존재하지않았다.
+```{r}
+sum(is.na(starbucks))
+```
+
+help에서 찾은 Source 인 http://www.starbucks.com/menu/nutrition에 들어가 찾아본 결과, 사이트가 만료되었고, 현재 메뉴들은 명칭이 바뀌어 있다. (https://www.starbucks.com/menu) 현재 표기법을 기반으로, 단위를 유추해보면, 칼로리는 kcal, 지방은 g, 탄수화물은 g, 식이섬유는 g, 단백질은 g 이다.
+
+scatter plot을 그려보면 다음과 같다.
+```{r}
+ggplot(starbucks, mapping = aes(x = calories, y = carb)) +
+  geom_point(mapping = aes(x = calories, y = carb))+
+  labs(
+    title = "Calories and carbohydrate grams",
+    caption = "Data on March 10, 2011",
+    x = " calories (kcal)",
+    y = "carbohydrate grams (g)"
+  )
+```
+
+
+```{r}
+?geom_smooth
+```
+
+
+일단 칼로리가 250kcal이하인 것이 적다. 한편, 탄수화물은 데이터에서 20g이화 70g이상을 제외하고는 고르게 분포하고 있는 것 같다.
+
+또한, 칼로가 250kcal이하에서는 대부분 칼로리가 200이하면서 탄수화물이 30g으로 적게 함유되어 있지만, 예외적으로 군집에서 떨어져 보이는 점이 보인다. 칼로리가 200에서 250사이에 유일한 점인데, 탄수화물이 40에서 50사이이다. 
+
+칼로리가 250초과인 점들은 탄수화물이 20이상부터 80까지 넓게 퍼져있다.
+
+한편, 전체적으로는 칼로리와 탄수화물 함량이 양의 상관관계로 보인다.
+
+
+
+#### Problem 1.2.
+
+```{r}
+attach(starbucks)
+fit1<-lm(carb~calories)
+summary(fit1)
+```
+
+
+#### Problem 1.3.
+
+
+```{r}
+fc <- fit1$coefficients
+fc[1]
+fc[-1]
+names(fc[-1])
+```
+
+```{r}
+mathexpression <- paste("carbohydrate grams =", paste(round(fc[1],2), paste(round(fc[-1],2), names(fc[-1]), sep=" * ", collapse=" + "), sep=" + "), "+ e")
+mathexpression
+```
+
+먼저 intercept는 calories가 0kcal일때 추정되는 탄수화물 함량으로서 8.94g이다. 또한 slope는 calories가 1kcal 증가할 때, 평균적으로 증가하는 탄수화물의 함량으로 0.11g이다.
+
+
+#### Problem 1.4.
+
+```{r}
+summary(fit1)["r.squared"]
+sqrt(0.4556237)
+```
+
+위와 같이 이 모델의 Multiple R-squared는 0.4556이다. 
+해석은 전체 변동(SST)중 모델이 설명하는 변동(SSR)의 비율이 약 45.56%라고 할 수 있다는 뜻이다.
+따라서 모델을 선택할 때 잔차를 잘 설명하는 모델로서 Multiple R-squared 값이 큰 것으로 선택할 수 있다.
+더하여서, 피어슨의 상관계수의 제곱이 Multiple R-squared 이므로 선형 상관관계의강도를 나타는 것으로도 해석될 수 있다.
+이때 45.56%정도만 설명하므로 50%를 기준으로 한다면, 50%이하로 충분한 모델이라고 볼 수 없다.
+
+
+```{r}
+?fortify
+```
+
+
+
+```{r}
+inf1<-fortify(fit1, starbucks)
+names(inf1)
+ggplot(inf1, aes(x = calories, y = .resid))+
+  geom_point()
+```
+
+
+x axis를 calories로 그린 residual plot 이다.
+
+
+
+```{r}
+ggplot(inf1, aes(x = .fitted, y = .resid))+
+  geom_point()
+```
+
+
+x axis를 fitted value로 그린 residual plot 이다.
+
+위 두 residual plot을 통해서 알 수 있는 사실은 0을 기준으로 분산이 전반적으로 대칭적인 모습을 하고 있지만,
+calories 값이 커질 수록 residual의 산포가 넓어지는 것을 알 수 있다.
+
+따라서 등분산성을 가정할 수 없고, weighted least square 방법을 이용하여 추정해야한다. 
+
+이때 계량경제학시간에서 이용한 weight를 구하는 방법을 이용한다.
+
+log(e^2)값을 독립변수들로 ols로 추정하고, 나온 추정량을 다시 exp(estimated log(e^2))로 추정 분산을 구해서 weight 값으로 1/exp(estimated log(e^2))를 대입한다.
+
+코드와 결과는 다음과 같다.
+
+
+```{r}
+lerror1<-log((fit1$residuals)^2)
+result1_f<-lm(lerror1~calories)
+pred1<-exp(result1_f$fitted.values)
+mod1<-1/pred1
+result1_2<-lm(carb~calories, weights=mod1)
+summary(result1_2)
+```
+
+Multiple R-squared값이 0.6014로 증가한 것을 살펴볼 수 있다.
+
+```{r}
+detach(starbucks)
+```
+
+### Problem 2.
+
+
+```{r}
+absenteeism<-read.csv("absenteeism.csv")
+head(absenteeism)
+```
+
+
+이후 package를 찾은 끝에 MASS라는 패키지에 존재함을 알 수 있었다.
+```{r}
+library(MASS)
+data(quine)
+quine
+```
+
+이후 변수값의 의미를 살펴보왔다.
+
+
+```{r}
+?quine
+```
+
+추가로 결측치가 있는지 확인해본 결과, 다음과 같이 결측치는 존재하지않았다.
+```{r}
+sum(is.na(absenteeism))
+```
+
+
+
+#### Problem 2.1.
+
+```{r}
+absenteeism$eth<-ifelse(absenteeism$eth=='A', 0, 1)
+absenteeism$sex<-ifelse(absenteeism$sex=='M', 1, 0)
+absenteeism$lrn<-ifelse(absenteeism$lrn=='SL', 1, 0)
+absenteeism
+```
+
+로 위처럼 데이터셋이 바뀌었다.
+
+#### Problem 2.2.
+
+```{r}
+attach(absenteeism)
+fit2<-lm(days~eth+sex+lrn)
+summary(fit2)
+```
+
+days변수를 종속변수로 하여 문제2.1의 변수 3개로 선형회귀 적합한 결과는 위와 같다.
+
+#### Problem 2.3.
+
+
+```{r}
+fc2 <- fit2$coefficients
+mathexpression2 <- paste("days =", paste(round(fc2[1],2), paste(round(fc2[-1],2), names(fc2[-1]), sep=" * ", collapse=" + "), sep=" + "), "+ e")
+mathexpression2
+```
+
+위처럼 적합된 수학적 식이 나타난다.
+
+적합된 값들을 해석해보면, eth, sex와 lrn이 모두 0일때는 days가 18.93으로 추정된다.
+
+이때 sex와 lrn이 고정되어있으면, eth가 0에서 1로 변화할때 평균적으로 days가 9.11감소한다.
+
+또한, eth와 lrn이 고정되어있으면, sex가 0에서 1로 변화할때 평균적으로 days가 3.1정도 증가한다.
+
+마지막으로 sex와 eth이 고정되어있으면, lrn이 0에서 1로 변화할때 평균적으로 days가 2.15 증가한다.
+
+는 의미이다.
+
+
+#### Problem 2.4.
+
+```{r}
+summary(fit2)["adj.r.squared"]
+```
+
+adjusted r squared는 위와 같이 약 0.07으로 나온다.
+
+해석은 전체 변동의 평균(MST)중 모델이 설명하지 못하는 변동의 평균(MSE)의 비율이 1-0.07=0.93으로 약 93%라고 말할 수 있다.
+따라서 90%이상을 설명하지 못하고 데이터를 설명할 좋은 모델이라고 볼 수 없다.
+
+
+#### Problem 2.5.
+
+```{r}
+inf2<-fortify(fit2, absenteeism)
+names(inf2)
+ggplot(inf2, aes(x = .fitted , y = .resid))+
+  geom_point()
+```
+
+eth, sex와 lrn 모두가 범주형 자료이므로, fitted value는 유한개이고, 2^3=8개의 적합값이 존재하게 된다.
+
+이때 잔차들을 살펴보면, 대부분 40이하이고, 50이상은 3개이다. 또한, -20 부근의 -20이하인 점 하나를 제외하고는 모두들 -20이상이다.
+
+따라서 잔차의 경험적 분포가 대칭적이지 않고, 전반적으로는 양수로 치워쳐있다.
+
+그러므로, 선형회귀분석이 좋은 모델이라고 보기 어렵다.
+
+#### Problem 2.6.
+
+
+```{r}
+newdata1 <- tibble(eth = c(1,1,1,0,0),
+sex = c(0,1,0,1,0),
+lrn = c(0,0,1,1,0))
+newdata1
+```
+
+이제 5번에서 사용한 선형회귀모델을 이용하여 나온 예측값을 구해보면 다음과 같다.
+
+```{r}
+result2<-predict(fit2,newdata = newdata1)
+result2
+```
+
+위의 테이블에 함께 나타내면 다음과 같다.
+
+```{r}
+newdata1%>%mutate(result2)
+```
+
+```{r}
+detach(absenteeism)
+```
+### Problem 3.
+
+
+true regression ftn이 아래와 같이 f(x)=x^2이다.
+
+또한, 아래와 같이 x,y를 랜덤하게 100개의 자료로 만들어서 살펴본다.
+```{r}
+f = function(x) { x^2}
+get_sim_data = function(f, sample_size = 100) {
+x = runif(n = sample_size, min = 0, max = 1)
+y = rnorm(n = sample_size, mean = f(x), sd = 0.3)
+data.frame(x, y)
+}
+```
+
+
+먼저, seed=1로 고정시켜놓고, 4가지 모델에 적합시킨다.
+```{r}
+set.seed(1)
+sim_data = get_sim_data(f)
+fit_0 = lm(y ~ 1,                   data = sim_data)
+fit_1 = lm(y ~ poly(x, degree = 1), data = sim_data)
+fit_2 = lm(y ~ poly(x, degree = 2), data = sim_data)
+fit_9 = lm(y ~ poly(x, degree = 9), data = sim_data)
+```
+
+```{r}
+sim_data1<-sim_data%>%mutate(fit0=fit_0$fitted.values,fit1=fit_1$fitted.values,fit2=fit_2$fitted.values,fit9=fit_9$fitted.values,TRUE1=x^2)
+ggplot(sim_data1,mapping = aes(x = x, y = y)) +
+  geom_point(mapping = aes(x = x, y = y))+
+  geom_line(mapping = aes(x = x, y = TRUE1),color=6)+
+  geom_line(mapping = aes(x = x, y = fit0),color=1)+
+  geom_line(mapping = aes(x = x, y = fit1),color=2)+
+  geom_line(mapping = aes(x = x, y = fit2),color=3)+
+  geom_line(mapping = aes(x = x, y = fit9),color=4)
+  labs(
+    title = "the true and four polynomial fitted lines"
+  )
+```
+
+위처럼 데이터 scatter plot 위에 실제 회귀선과 각각 적합시킨 선을 그렸다.
+
+degree가 0인 것은 데이터를 잘 설명하지 못하고 전체 평균만 보여주고 있다.
+
+degree가 9인 것을 제외하고, 다른 0아닌 degree를 갖는 모형들은 서로 비슷한 회귀선을 보여준다.
+
+degree가 9인 것은 추세가 있는 주기함수처럼 나왔다.
+
+이제 250번 시뮬레이션을 돌려서, box plot을 그려보자.
+
+```{r}
+?geom_boxplot
+```
+
+```{r}
+set.seed(1)
+n_sims = 250
+n_models = 4
+x = data.frame(x = 0.90)
+predictions = data.frame( degree=c(rep("0",250),rep("1",250),rep("2",250),rep("9",250)), pred=c(1:1000) )
+predictions
+for(sim in 1:n_sims) {
+sim_data = get_sim_data(f)
+fit_0 = lm(y ~ 1, data = sim_data)
+fit_1 = lm(y ~ poly(x, degree = 1), data = sim_data)
+fit_2 = lm(y ~ poly(x, degree = 2), data = sim_data)
+fit_9 = lm(y ~ poly(x, degree = 9), data = sim_data)
+predictions[sim, 2] <- predict(fit_0, x)
+predictions[250+sim, 2] = predict(fit_1, x)
+predictions[500+sim, 2] = predict(fit_2, x)
+predictions[750+sim, 2] = predict(fit_9, x)
+}
+predictions
+ggplot(data = predictions, mapping = aes(x = degree, y = pred))+ 
+  geom_boxplot()+
+  labs(
+    x = " Polynomial Degree",
+    y = "predictions"
+  )
+```
+
+로 위처럼 box plot이 그려진다.
+
+
+이때 degree가 증가할수록 중간값이 증가하고, degree가 1,2,9일때 비슷하고, degree가 2, 9일때는 거의 유사하다.
+
+또한, first and third quartiles (the 25th and 75th percentiles)의 차이=(IQR)가 degree가 증가할 수록 증가한다.
+
+더하여서, degree가 0일때와 9일때 1.5 * IQR from the hinge를 적용했을 때, outlying point가 존재한다.
+
+따라서 boxplot에서 살펴볼때는 degree=9 모델보다는 degree=2 모델을 쓰는 것이 IQR이 더 적고, outlier도 없으므로, 선호된다.
+
+

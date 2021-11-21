@@ -1,0 +1,162 @@
+---
+title: "Timeseires_HW6"
+author: "김민국"
+date: '2020-06-06 '
+header-includes:
+  - \usepackage[hangul]{kotex}
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(fGarch)
+library(rugarch)
+
+```
+
+
+#### 5번
+###### 오차가 정규분포를 따를 때
+```{r echo=TRUE, eval=TRUE}
+g_1 <- garchSpec(model = list(omega=1, alpha=0.3, beta=0.4), rseed=1) 
+data_1 <- garchSim(spec = g_1, n=1000)
+plot(data_1)
+```
+-> alpha와 beta가 적당한 수준이며 둘의 합이 1이 넘지 않는 경우이다.  
+-> 중간에 값이 심하게 커지거나 작아지는 부분을 제외하고서는 일반 시계열도와 큰 차이를 느낄 수는 없다.  
+-> 분산이 조금은 변하는 것처럼 보이지만 그 외에는 정상성도 만족하는 것처럼 보인다.  
+
+```{r echo=TRUE, eval=TRUE}
+g_2 <- garchSpec(model = list(omega=1, alpha=0.01, beta=0.01), rseed=1) 
+data_2 <- garchSim(spec = g_2, n=1000)
+plot(data_2)
+```
+->-> alpha와 beta가 매우 작은 경우이다.  
+-> 정상성을 만족하는 것처럼 보이며 데이터가 일정 수준을 벗어나는 것은 거의 없다고 볼 수 있다. 
+
+```{r echo=TRUE, eval=TRUE}
+g_3 <- garchSpec(model = list(omega=1, alpha=0.5, beta=0.01), rseed=1) 
+data_3 <- garchSim(spec = g_3, n=1000)
+plot(data_3)
+```
+-> alpha는 적당한 수준이며 beta가 매우 작을 때이다. 
+-> 중간에 값이 급격히 커지거나 작아지는 부분이 존재하지만 그 외에는 큰 문제는 없어 보인다.  
+-> 중간에 값이 튈 때 분산이 변하는 것을 제외하고는 정상성을 만족하는 것처럼 보인다.  
+
+```{r echo=TRUE, eval=TRUE}
+g_4 <- garchSpec(model = list(omega=1, alpha=0.01, beta=0.5), rseed=1) 
+data_4 <- garchSim(spec = g_4, n=1000)
+plot(data_4)
+```
+-> alpha가 매우 작으며 beta가 적당한 수준인 경우이다.  
+-> 크게 범위를 벗어나는 값들이 보이지 않으며 정상성을 만족하는 시계열처럼 보인다.  
+
+```{r echo=TRUE, eval=TRUE}
+g_5 <- garchSpec(model = list(omega=1, alpha=0.6, beta=0.3999999), rseed=1) 
+data_5 <- garchSim(spec = g_5, n=1000)
+plot(data_5)
+```
+-> alpha와 beta의 합이 1에 가까운 경우이다.  
+-> 데이터의 값들이 범위가 매우 넓으며 분산 자체의 변화가 매우 크다.  
+-> 분산이 어느정도 일정해서 계속 커지는 것처럼 보이기도 한다.  
+
+###### 오차가 t(4) 분포를 따를 때  
+```{r echo=TRUE, eval=TRUE}
+g_t_1 <- garchSpec(model = list(omega=1, alpha=0.3, beta=0.4, shape = 4),
+                   rseed=1, cond.dist="std") 
+data_t_1 <- garchSim(spec = g_t_1, n=1000)
+plot(data_t_1)
+```
+-> alpha와 beta가 적당한 수준이며 둘의 합이 1이 넘지 않는 경우이다.  
+-> 중간중간 값이 비정상적으로 커지는 경우들이 존재한다.  
+-> 비정상적으로 변화하는 점들을 제외하고서는 정상성을 만족하는 것처럼 보인다.  
+```{r echo=TRUE, eval=TRUE}
+g_t_2 <- garchSpec(model = list(omega=1, alpha=0.01, beta=0.01, shape = 4),
+                   rseed=1, cond.dist="std") 
+data_t_2 <- garchSim(spec = g_t_2, n=1000)
+plot(data_t_2)
+```
+-> alpha와 beta가 매우 작은 경우이다.  
+-> 중간중간 값이 비정상적으로 커지는 부분이 존재한다.  
+-> 값이 비정상적으로 변하는 부분을 제외하고서는 정상성이 만족하는 것처럼 보인다.  
+```{r echo=TRUE, e매al=TRUE}
+g_t_3 <- garchSpec(model = list(omega=1, alpha=0.5, beta=0.01, shape = 4),
+                   rseed=1, cond.dist="std") 
+data_t_3 <- garchSim(spec = g_t_3, n=1000)
+plot(data_t_3)
+```
+-> alpha는 적당하고 beta가 매우 작은 경우이다.  
+-> 중간중간 값이 비정상적으로 커지는 부분이 존재한다.  
+-> 값이 비정상적으로 변하는 부분을 제외하고서는 정상성이 만족하는 것처럼 보인다.  
+```{r echo=TRUE, eval=TRUE}
+g_t_4 <- garchSpec(model = list(omega=1, alpha=0.01, beta=0.5, shape = 4),
+                   rseed=1, cond.dist="std") 
+data_t_4 <- garchSim(spec = g_t_4, n=1000)
+plot(data_t_4)
+```
+-> alphar가 매우 작고 beta는 적당한 크기인 경우이다.  
+-> 중간중간 값이 비정상적으로 커지는 부분이 존재한다.  
+-> 값이 비정상적으로 변하는 부분을 제외하고서는 정상성이 만족하는 것처럼 보인다.  
+
+```{r echo=TRUE, eval=TRUE}
+g_t_5 <- garchSpec(model = list(omega=1, alpha=0.6, beta=0.3999999, shape = 4),
+                   rseed=1, cond.dist="std") 
+data_t_5 <- garchSim(spec = g_t_5, n=1000)
+plot(data_t_5)
+```
+-> alpha와 beta의 합이 1에 매우 가까운 경우이다.  
+-> 중간중간 값이 비정상적으로 커지는 부분이 존재한다.  
+-> 오차가 정규분포를 따를 때보다는 값이 극단적으로 변하는 경우는 드물다.  
+-> 하지만 마찬가지로 값이 극단적으로 변화하는 경우가 있어서 분산 크게 변한다.  
+
+#### 14번
+```{r echo=TRUE, eval=TRUE}
+data_14 <- read.table("ex_ch6_14.txt", stringsAsFactors = F)
+data_14 <- data_14[-1,]
+data_14 <- as.numeric(data_14[,2])
+
+
+fit_14 <- garchFit(formula = ~ garch(1,1), data = data_14)
+para <- fit_14@fit$par
+para
+```
+-> GARCH(1,1)을 적합한 결과는 다음과 같았다.  
+-> omega는 0.4062328, alpha는 0.9296281, beta는 0.0818210이다.  
+
+```{r echo=TRUE, eval=TRUE}
+cov_cal <- function(data, h) {
+  n <- length(data)
+  m <- mean(data)
+  x <- data[1:(n-h)] - m
+  y <- data[(h+1):n] - m
+  return(sum(x * y/n))
+}
+
+var_cal <- function(data, max_h=length(data)^(1/3)) {
+  n <- length(data)
+  sd2_hat <- cov_cal(data, 0)
+  for(i in 1:max_h) {
+    sd2_hat <- sd2_hat + 2*(cov_cal(data, i))
+  }
+  return(sd2_hat)
+}
+
+CUSUM_cal <- function(data) {
+  ## return : maximum cusum test statistics and change point
+  n <- length(data)
+  cusum <- abs((cumsum(data) - (1:n)/n*sum(data) ) / ( sqrt(n) * sqrt(var_cal(data))))
+  argmax <- which.max(cusum)
+  if(max(cusum)>1.358) return(list("CUSUM_statistics" = max(cusum), "change_point"=argmax))
+  else return(print("no change"))
+}
+
+CUSUM_cal(data_14)
+```
+-> 실습시간에 이용한 cumsum test를 이용한 결과이다.  
+-> 유의수준 5% 수준에서 1051번째 데이터에서 모수가 변화하는 것을 알 수 있다.  
+
+```{r echo=TRUE, eval=TRUE}
+plot(data_14, type = "l")
+```
+-> 실제 data를 plotting 해본 결과 1000번 째 이후에서 급격히 값이 증가하는 부분이 존재.  
+-> 이 때 모수의 변화가 있는 것인데 이 지점이 1051번째 데이터임을 검정을 통해 확인할 수 있었다.  

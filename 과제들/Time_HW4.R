@@ -1,0 +1,105 @@
+library(forecast)
+library(tseries)
+
+######4.7
+
+set.seed(200507)
+data_7_ar<- arima.sim(model = list(ar = c(0.5)), n = 100)
+fit_7_ar <- arima(data_7_ar, order = c(1,0,0), include.mean = T)
+fit_7_ar$aic
+fit_7_arma <- arima(data_7_ar, order = c(1,0,1), include.mean = T)
+fit_7_arma$aic
+
+#######ar로 fitting한 aic값이 arma fitting시보다 작다.
+
+data_7_ma<- arima.sim(model = list(ma = c(0.5)), n = 100)
+fit_7_ma <- arima(data_7_ma, order = c(0,0,1), include.mean = T)
+fit_7_ma$aic
+fit_7_arma_1 <- arima(data_7_ma, order = c(1,0,1), include.mean = T)
+fit_7_arma_1$aic
+
+#######ma로 fitting한 aic값이 arma fitting시보다 작다.
+
+###### 두 경우 모두 aic 기준 ar(1), ma(1)로 적합하는 것이 더 낫다. arma(1)으로 적합하는 것은 overfitting으로 생각할 수 있다.
+
+######4.10
+
+data_10 <- read.csv("ex_ch4_10.txt")
+
+#(1)
+plot(data_10$data, type = 'l', xlab = "time", ylab = "data")
+acf_10 <- acf(data_10$data)
+pacf_10 <- pacf(data_10$data)
+##### acf를 통해서는 모수값이 매우커진 모델을 생각해야 하지만 pacf를 통해서는 2 이상부터는 0에 매우 가까운 값을 가지고 있으므로 ar(1) 모델로 생각할 수 있다.
+
+
+#(2)
+adf.test(data_10$data)
+#### p-value가 0.15로 유의수준 0.05보다 크므로 귀무가설을 기각할 수 없다. 대립가설을 채택할 만한 층거가 되지 못합니다. 따라서 unit root를 가진다고 볼 수 있다.
+adf.test(data_10$data, alternative = "explosive")
+##### 만일 data가 stationary하지 않다고 생각해서 검정을 진행한 결과 p-value가 0.85로 귀무가설을 기각할 수 없다. 대립가설을 채택할 만한 증거가 되지 못합니다. 따라서 unit root를 가진다고 볼 수 있다.
+
+#(3)
+auto.arima(data_10$data)
+#####arima(1,0,0) model이 선택되었으며 이는 (1)에서 생각한 ar(1) 모델의 결과과 같다.
+
+#(4)
+fit_10 <- Arima(data_10$data, order = c(1,0,0))
+res_10 <- fit_10$residuals
+plot(res_10)
+abline(h = 0, col = 'red', lwd = 3)
+qqnorm(res_10)
+qqline(res_10, col = "red")
+jarque.bera.test(res_10)
+shapiro.test(res_10)
+##### residual의 분포가 0을 기준으로 매우 random하게 분포되어 있어서 독립적이라고 생각할 수 잇다. QQplot을 그렸을 때 Y=X 직선과 매우 유사하므로 잔차가 정규분포를 따른다고 볼 수 있다. jarque bera test와 shapiro test 모두 p-value가 유의수준 0.05보다 큰 값을 가지므로 귀무가설을 기각할 수 없다. 따라서 잔차가 정규분포를 따른다고 생각할 수 있다. 
+
+auto.arima(data_10$data)$coef
+Arima(data_10$data, order = c(2,0,0))$coef
+Arima(data_10$data, order = c(1,0,1))$coef
+
+##### 기존 ar(1)모델에서 모수를 1씩 증가시킨 ar(2)모델과 arma(1,1)모델에서 ar1애 대한 계수의 변화가 크지 않다. 
+
+pt(Arima(data_10$data, order = c(2,0,0))$coef[2] / 0.0936, df = 119)
+pt(Arima(data_10$data, order = c(1,0,1))$coef[2] / 0.1005, df = 119)
+
+##### 새로 추가된 모수들은 유의수준 0.05에 대해 0이라는 귀무가설을 기각할 수 없으므로 0으로 생각할 수 있다. 
+##### 따라서 과적합 진단에 의해서도 ar(1) 모형을 취할 수 있다.
+
+######4.11
+
+data_11 <- read.csv("ex_ch4_11.txt")
+
+#(1)
+plot(data_11$data, type = "l")
+
+######## 계속하여 증가하고 있으므로 정상 시계열로 볼 수 없다. 
+
+#(2)
+#### 선형적으로 증가하기 때문에 차분을 해줘야 할 것 같다.
+
+#(3)
+plot(diff(data_11$data), type = 'l')
+acf_11 <- acf(diff(data_11$data))
+pacf_11 <- pacf(diff(data_11$data))
+####### sacf와 spacf 모두 양수와 음수값이 반복되는 경향을 가지고 있다. 두 값모두 0으로 근사해가고 있지만 그 값들이 큰 값들이기 때문에 만일 이를 기준으로 적합을 한다고 생각하면 arma 모델 이용하여 적합을 해야 할 것 같다. -> ar과 ma를 단독으로 사용하기에는 무리가 있어보인다.
+
+#(4)
+auto.arima(data_11$data)
+#####ARIMA(2,1,1)로 적합해야 한다.
+
+fit_11 <- Arima(data_11$data, order = c(2,1,1))
+res_11 <- fit_11$residuals           
+plot(res_11)
+abline(h = 0, col = 'red', lwd = 3)
+qqnorm(res_11)
+qqline(res_11, col = "red")
+jarque.bera.test(res_11)
+shapiro.test(res_11)
+##### residual의 분포가 0을 기준으로 매우 random하게 분포되어 있어서 독립적이라고 생각할 수 잇다. QQplot을 그렸을 때 Y=X 직선과 매우 유사하므로 잔차가 정규분포를 따른다고 볼 수 있다. jarque bera test와 shapiro test 모두 p-value가 유의수준 0.05보다 큰 값을 가지므로 귀무가설을 기각할 수 없다. 따라서 잔차가 정규분포를 따른다고 생각할 수 있다. 
+
+
+auto.arima(data_11$data)$coef
+Arima(data_11$data, order = c(3,1,1))$coef
+Arima(data_11$data, order = c(2,1,2))$coef
+##### 기존 모델에서의 계수들과 모수를 1씩 늘렸을 때의 모델의 모수의 값을 비교했을 때 이미 충분한 차이가 있다. 따라서 과적합 검정에서는 잠정 모형에 이상이 있음을 알 수 있다.
